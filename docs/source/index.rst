@@ -1,0 +1,264 @@
+SoyutNet documentation
+======================
+
+SoyutNet is a place/transition net (PT net, Petri net) simulator
+that uses Python's asyncio task and synchronization utilities as
+its backend. (*Soyut means abstract in Turkish.*)
+
+This documents gives a brief information on `PT nets`_. Then, summarizes
+its implementation in `SoyutNet`_ and discusses the project's `Goals`_.
+
+`Code repository 🔗 <https://github.com/dmrokan/soyutnet>`_
+
+.. _PT nets:
+
+PT nets
+-------
+
+Place/transition net is a formal modeling framework for discrete event
+systems (DES). It also provides a graphical modeling framework to visualize
+the structure of the model. A graphical example is given below.
+
+.. _first example:
+
+An example
+^^^^^^^^^^
+
+.. image:: _static/images/first_example_T0.png
+   :width: 480
+
+In the diagram,
+
+* :math:`p_1` and :math:`p_2` are called **places**.
+* :math:`t_1` is called a **transition**.
+* :math:`a_1` and :math:`a_2` are **arcs** connecting transtions and places to each other.
+* :math:`\bullet` is called a **token**.
+* :math:`p_1` is an **input place** of :math:`t_1`
+* :math:`p_2` is an **output place** of :math:`t_1`
+
+When this model is executed, its flow is
+
+#. :math:`p_1` has a token and its output arc is connected to :math:`t_1`,
+#. :math:`t_1` is enabled becaues :math:`p_1` has 1 or more tokens,
+#. :math:`t_1` is fired and it transfers the token from :math:`p_1` to :math:`p_2`.
+
+The final state is:
+
+.. image:: _static/images/first_example_T1.png
+   :width: 480
+
+The model reached its final state according to the rules explained below.
+
+PT net definition and rules
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A PT net consists of 5 components
+
+#. :math:`P=\{p_1, p_2, \dots, p_m\}` finite set of places
+#. :math:`T=\{t_1, t_2, \dots, t_n\}` finite set of transitions
+#. :math:`A \subseteq (P \times T) \cup (T \times P)` set of arcs from P to T and T to P
+#. :math:`W: A \rightarrow \{1, 2, \dots\}` arc weights
+#. :math:`M_0: P \rightarrow \{0, 1, 2, \dots\}` initial marking
+
+In the example above,
+
+* :math:`P=\{p_1, p_2\}`
+* :math:`T=\{t_1\}`
+* :math:`A=\{a_1, a_2\}`
+* :math:`W=\{w(p_1, t_1)=1, w(t_1, p_2)=1\}`
+* :math:`M_0=\{p_1 \rightarrow 1, p_1 \rightarrow 0\}`
+
+Functions :math:`w(p_i, t_j)` and :math:`w(t_i, p_j)` denotes the arc weights between
+transitions and places. After :math:`t_1` fires, marking changes and it becomes
+
+.. math::
+   M_1=\{p_1 \rightarrow 0, p_2 \rightarrow 1\}
+
+according to the rules below.
+
+1. A transition :math:`t_i` is enabled if its all input places have a number of tokens greater than or
+   equal to the weight of the connecing arcs.
+
+   .. math::
+      M_{in} = \{u_1, u_2, \dots\} ~~~ \textrm{marking of input places of} ~ t_i \\
+      M_{out} = \{v_1, v_2, \dots\} ~~~ \textrm{marking of output places of} ~ t_i \\
+
+   .. math::
+      w(\bar{p}_j, t_i) \leq u_j, ~~~ \textrm{for all input places} ~ \bar{p}_j
+
+where :math:`j` are the indices of :math:`t_i`'s input places and :math:`M_{in}, M_{out}` are the
+current marking of the input and output places (number of tokens in each place).
+
+2. When a transition :math:`t_i` is fired, it removes a number of tokens equal to the weights of arcs
+   connecting the input places and transfers a number of tokens equal to the weight of arcs connecting
+   to the output places.
+
+   .. math::
+      M^{\ast}_{in} = \{u_1-w(\bar{p}_1,t_i), u_2-w(\bar{p}_2, t_i), \dots\} \\
+      M^{\ast}_{out} = \{v_1+w(t_i,\tilde{p}_1), v_2+w(t_i, \tilde{p}_2), \dots\} \\
+
+where :math:`M^{\ast}` is the new marking of input and output places after :math:`t_i` is fired.
+
+Labeled PT net
+^^^^^^^^^^^^^^
+
+An extension of PT nets called **labeled PT nets** which assigns a label to the tokens and arcs.
+
+.. image:: _static/images/first_example_labeled_PT.png
+   :width: 720
+
+The transition :math:`t_1` expects a specific type of token (represented by ◆) and transforms
+it to a token with another label (▲).
+
+.. _SoyutNet:
+
+SoyutNet
+--------
+
+SoyutNet implements a slightly modified version of the labeled PT nets. Each place/transition (PT)
+work asynchronously in their dedicated ``asyncio.Task`` and communicates to the other PTs
+through ``asyncio.Queue`` instances in their input/output arcs.
+
+Data structures
+^^^^^^^^^^^^^^^
+
+**Label**
+    An integer value. Its type is ``label_t = int``. It can be the generic label
+    (:py:attr:`soyutnet.common.GENERIC_LABEL`) or any positive integer.
+
+**ID**
+    An integer value. Its type is ``id_t = int``. It can be the generic ID
+    (:py:attr:`soyutnet.common.GENERIC_ID`) or any positive integer.
+
+**Token**
+    It is defined as a tuple of a label and an ID.
+
+   .. code-block:: python
+
+      token: Tuple[label_t, id_t] = (label, id)
+
+**Place**
+    Keeps a Python dictionary of tokens indexed by labels (:py:attr:`soyutnet.pt_common.PTCommon._tokens`).
+
+    .. code-block:: python
+
+        token_dictionary: Dict[label_t, list[id_t]] = {
+            label_1: [ id_1, id_2 ],
+            label_2: [ id_3 ],
+            label_3: [ id_4, id_5 ],
+        }
+
+**Arc**
+    Arcs have a weight (default is 1) and *one or more labels*. And, they keep references to its
+    input and output places/transitions (PTs).
+
+    .. code-block:: python
+
+       start = pt1 # Weak reference to the input place or transition
+       end = pt2 # Weak reference to the output place or transition
+       weight: int = 1
+       labels: list[label_t] = [ label_1, label_2, ... ]
+
+    An arc can accept any token whose label is in its ``labels`` list. End points ``start``
+    and ``end`` can not both be places or transitions. If one is a place, the other must
+    be a transition.
+
+    Arcs use ``asyncio.Queue`` instances to wait for and transfer tokens. Their queue's maximum size
+    is equal the arc's weight.
+
+**Transition**
+    A transition is enabled if all input arc (:py:attr:`soyutnet.pt_common.PTCommon._input_arcs`)
+    queues (:py:attr:`soyutnet.pt_common.Arc._queue`) are full. Meaning, input arc queues has the
+    same number of tokens as arc's weight.
+
+    **SoyutNet's additional rule:** The sum of a transition's input arc weights for each label
+    must be equal to the sum of its output arc weights for each label.
+
+    As shown in the image below sum of input and output ◆ and ▲ are the same. If this property is
+    not satisfied, SoyutNet model will possibly enter a
+    `deadlock <https://en.wikipedia.org/wiki/Deadlock_(computer_science)>`_.
+
+.. image:: _static/images/sum_of_arc_weights.png
+   :width: 480
+
+**Note:** SoyutNet's places and transitions accept a callback function named as ``processor``
+(:py:attr:`soyutnet.pt_common.PTCommon._processor`). It is called after tokens acquired from input
+arcs and before sending them through output arcs. SoyutNet's additional rule can be worked around
+by a custom processor callback that duplicates or discards input tokens.
+
+Special place
+^^^^^^^^^^^^^
+
+SoyutNet implements a special type of place called *SpecialPlace* (:py:class:`soyutnet.place.SpecialPlace`).
+Regular places (:py:class:`soyutnet.place.Place`) operates according to the PT net rules. More precisely,
+places redirect tokens from input arcs to the output arcs by matching token's and output arc's labels.
+
+On the other hand, *SpecialPlace* class constructor accepts two extra optional arguments.
+
+.. _producer:
+
+#. ``producer``: It is a callback function which is called to acquire tokens instead of the
+   default ``_process_input_arcs`` (:py:func:`soyutnet.pt_common.PTCommon._process_input_arcs`).
+   This function can be used to produce custom tokens by generating a label and ID. Then, it will
+   be injected into the PT net's flow.
+
+.. _consumer:
+
+#. ``consumer``: This callback function is used instead of the default ``_process_output_arcs``
+   function (:py:func:`soyutnet.pt_common.PTCommon._process_output_arcs`) if it is provided.
+   It can be used as an end point of PT net model. The tokens acquired by this function can be
+   redirected to other utilities.
+
+Example code
+^^^^^^^^^^^^
+
+The code below implements the `first example`_.
+
+.. code:: python
+
+   import asyncio
+
+   import soyutnet
+   from soyutnet.pt_common import PTRegistry
+   from soyutnet.place import Place
+   from soyutnet.transition import Transition
+   from soyutnet.common import GENERIC_LABEL, GENERIC_ID
+
+   def main():
+       p1 = Place("p1", initial_tokens={ GENERIC_LABEL: [GENERIC_ID] })
+       p2 = Place("p2")
+       t1 = Transition("t1")
+
+       p1.connect(t1).connect(p2)
+
+       reg = PTRegistry()
+       reg.register(p1)
+       reg.register(p2)
+       reg.register(t1)
+
+       asyncio.run(soyutnet.main(reg))
+
+   if __name__ == "__main__":
+       main()
+
+.. _Goals:
+
+Goals
+-----
+
+The main difference between SoyutNet and the labeled PT nets is such that, sum of input arc weights
+of a transition must be equal to the sum of output arc weights for each label. Because, SoyutNet
+assumes that tokens represent real entities with a label and unique ID. It is a better fit for a
+real life application to ensure that a token created by a `producer`_, arrives at a `consumer`_
+without duplication or getting discarded.
+
+The main goal of SoyutNet is to investigate that a producer/consumer pipeline can be improved
+by PT net based methods, or not.
+
+Docstrings
+----------
+
+.. toctree::
+   :maxdepth: 3
+
+   soyutnet

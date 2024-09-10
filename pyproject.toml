@@ -1,0 +1,65 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "soyutnet"
+version = "0.1.0"
+dependencies = [
+]
+requires-python = ">=3.8"
+authors = [
+  {name = "Okan Demir", email = "okndemir@gmail.com"},
+]
+maintainers = [
+  {name = "Okan Demir", email = "okndemir@gmail.com"}
+]
+description = "Place/transition net (petri net) simulator that uses asyncio utilities as its backend"
+readme = "README.md"
+license = {file = "LICENSE.md"}
+keywords = ["pt-net", "simulator", "petri-net"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest",
+  "pytest-asyncio",
+  "pytest-randomly",
+]
+dev = [
+  "soyutnet[test]",
+  "black",
+  "mypy",
+]
+doc = [
+  "sphinx",
+]
+
+[project.urls]
+Homepage = "https://github.com/dmrokan/soyutnet"
+Documentation = "https://github.com/dmrokan/soyutnet"
+Repository = "https://github.com/dmrokan/soyutnet"
+"Bug Tracker" = "https://github.com/dmrokan/soyutnet/issues"
+Changelog = "https://github.com/dmrokan/soyutnet/blob/main/CHANGELOG.md"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = 'soyutnet\/.*\.pyi?$|tests\/.*\.pyi?$'
+
+[tool.mypy]
+python_version = "3.11"
+exclude = "build|tests|docs|examples"
+strict = true
+warn_unreachable = true
+implicit_reexport = true
+show_error_codes = true
+show_column_numbers = true
+ignore_missing_imports = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
