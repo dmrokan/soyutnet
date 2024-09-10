@@ -1,12 +1,12 @@
-<img align="left" width="128" height="128" src="https://raw.githubusercontent.com/dmrokan/soyutnet/main/docs/source/_static/soyutnet_logo.png">
-
 # SoyutNet
+
+<img align="left" width="128" height="128" src="https://raw.githubusercontent.com/dmrokan/soyutnet/main/docs/source/_static/soyutnet_logo.png">
 
 SoyutNet is a place/transition net (PT net, Petri net) simulator
 that uses Python's asyncio task and synchronization utilities as
 its backend. (*Soyut means abstract in Turkish.*)
 
-Its documentation can be found at []()
+Its documentation can be found at [https://soyutnet.readthedocs.io](https://soyutnet.readthedocs.io)
 
 ## Building
 
