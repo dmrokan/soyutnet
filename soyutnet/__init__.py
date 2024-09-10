@@ -5,8 +5,6 @@ from typing import Any
 
 from .pt_common import PTRegistry, PTCommon
 
-_tasks: set[asyncio.Task[PTCommon]] = set()
-
 
 def _int_handler(
     signame: str, loop: asyncio.AbstractEventLoop, pt_registry: PTRegistry
@@ -58,10 +56,12 @@ async def main(pt_registry: PTRegistry, debug_level: str = "ERROR") -> None:
     if debug_level == "DEBUG":
         global_defs.DEBUG_ENABLED = True
 
+    tasks: set[asyncio.Task[PTCommon]] = set()
+
     _add_int_handlers(pt_registry)
     for loop in pt_registry.get_loops():
         task: asyncio.Task[Any] = asyncio.create_task(loop)
-        _tasks.add(task)
-        task.add_done_callback(_tasks.discard)
+        tasks.add(task)
+        task.add_done_callback(tasks.discard)
 
-    await asyncio.gather(*_tasks, return_exceptions=False)
+    await asyncio.gather(*tasks, return_exceptions=False)
