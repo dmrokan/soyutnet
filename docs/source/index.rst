@@ -262,3 +262,11 @@ Docstrings
    :maxdepth: 3
 
    soyutnet
+
+Credits
+-------
+
+.. toctree::
+   :maxdepth: 2
+
+   credits

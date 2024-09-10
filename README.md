@@ -61,3 +61,5 @@ def main():
 if __name__ == "__main__":
     main()
 ```
+
+## [Credits](https://github.com/dmrokan/soyutnet/blob/main/docs/source/credits.rst)
