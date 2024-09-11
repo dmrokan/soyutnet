@@ -34,17 +34,17 @@ def main(token_count=12):
             soyutnet.terminate()
 
     o00 = ComparativeObserver(
-        to_what={2: [-1] + [1] * (len(token_ids) // 2 - 2)},
+        expected={2: [-1] + [1] * (len(token_ids) // 2 - 2)},
         on_comparison_ends=on_comparison_ends,
         verbose=False,
     )
     o01 = ComparativeObserver(
-        to_what={2: [-1] + [1] * (len(token_ids) // 2 - 2)},
+        expected={2: [-1] + [1] * (len(token_ids) // 2 - 2)},
         on_comparison_ends=on_comparison_ends,
         verbose=False,
     )
     o1 = ComparativeObserver(
-        to_what={2: [1] * (len(token_ids) // 2 - 1)},
+        expected={2: [1] * (len(token_ids) // 2 - 1)},
         on_comparison_ends=on_comparison_ends,
         verbose=False,
     )

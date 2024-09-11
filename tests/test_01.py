@@ -55,10 +55,7 @@ async def test_03():
 def test_04():
     import simple_example as e
 
-    try:
-        e.main()
-    except asyncio.exceptions.CancelledError:
-        pass
+    e.main()
 
 
 def test_05():
@@ -82,19 +79,14 @@ def test_06():
             pass
 
 
-@pytest.mark.skip(reason="")
 def test_07():
     import simple_example_two_input_places_but_different_weights as e
 
-    MAX = 2
+    MAX = 10
     for i in range(1, MAX + 1):
         for j in range(1, MAX + 1):
             for k in range(1, MAX + 1):
-                try:
-                    print(i, j, k)
-                    e.main(w1=i, w2=j, w3=k)  # TODO: (1, 1, k) not working
-                except asyncio.exceptions.CancelledError:
-                    pass
+                e.main(w1=i, w2=j)
 
 
 def test_08():

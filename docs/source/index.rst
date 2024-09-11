@@ -3,7 +3,7 @@ SoyutNet documentation
 
 SoyutNet is a place/transition net (PT net, Petri net) simulator
 that uses Python's asyncio task and synchronization utilities as
-its backend. (*Soyut means abstract in Turkish.*)
+backend. (*Soyut means abstract in Turkish.*)
 
 This documents gives a brief information on `PT nets`_. Then, summarizes
 its implementation in `SoyutNet`_ and discusses the project's `Goals`_.
@@ -31,7 +31,7 @@ In the diagram,
 
 * :math:`p_1` and :math:`p_2` are called **places**.
 * :math:`t_1` is called a **transition**.
-* :math:`a_1` and :math:`a_2` are **arcs** connecting transtions and places to each other.
+* :math:`a_1` and :math:`a_2` are **arcs** connecting transitions and places to each other.
 * :math:`\bullet` is called a **token**.
 * :math:`p_1` is an **input place** of :math:`t_1`
 * :math:`p_2` is an **output place** of :math:`t_1`
@@ -39,7 +39,7 @@ In the diagram,
 When this model is executed, its flow is
 
 #. :math:`p_1` has a token and its output arc is connected to :math:`t_1`,
-#. :math:`t_1` is enabled becaues :math:`p_1` has 1 or more tokens,
+#. :math:`t_1` is enabled because :math:`p_1` has 1 or more tokens,
 #. :math:`t_1` is fired and it transfers the token from :math:`p_1` to :math:`p_2`.
 
 The final state is:
@@ -77,7 +77,7 @@ transitions and places. After :math:`t_1` fires, marking changes and it becomes
 according to the rules below.
 
 1. A transition :math:`t_i` is enabled if its all input places have a number of tokens greater than or
-   equal to the weight of the connecing arcs.
+   equal to the weight of the connecting arcs.
 
    .. math::
       M_{in} = \{u_1, u_2, \dots\} ~~~ \textrm{marking of input places of} ~ t_i \\
@@ -246,14 +246,19 @@ The code below implements the `first example`_.
 Goals
 -----
 
-The main difference between SoyutNet and the labeled PT nets is such that, sum of input arc weights
-of a transition must be equal to the sum of output arc weights for each label. Because, SoyutNet
-assumes that tokens represent real entities with a label and unique ID. It is a better fit for a
-real life application to ensure that a token created by a `producer`_, arrives at a `consumer`_
-without duplication or getting discarded.
+SoyutNet implements a modified version of labeled PT nets with an additional rule;
 
-The main goal of SoyutNet is to investigate that a producer/consumer pipeline can be improved
-by PT net based methods, or not.
+    the sum of input arc weights of a transition must be equal to the sum of output arc
+    weights for each label.
+
+Because, SoyutNet assumes that tokens represent real entities with an ID and a label assigned.
+The ID identifies the token and the label determines how it flows through the network.
+It also ensures that a token created by a `producer`_ arrives at a `consumer`_ without
+duplication or getting discarded as generally expected in a real life application. Producers
+and consumers should decide to duplicate or discard a token.
+
+The main goal of SoyutNet is to investigate that PT net based formal methods can be used to improve
+a producer/consumer pipeline.
 
 Docstrings
 ----------
@@ -262,6 +267,22 @@ Docstrings
    :maxdepth: 3
 
    soyutnet
+
+Examples
+--------
+
+.. toctree::
+   :maxdepth: 2
+
+   examples
+
+Modules
+-------
+
+.. toctree::
+   :maxdepth: 1
+
+   modules
 
 Credits
 -------

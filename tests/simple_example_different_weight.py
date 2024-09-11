@@ -34,21 +34,21 @@ def main(w1=1, w2=1):
         if place_count == 0:
             soyutnet.terminate()
 
-    to_what1 = {2: [w1] * (len(token_ids) // w1 - 1)}
-    to_what2 = {2: [w2 * int(i % w1 == 0) for i in range(len(token_ids) - (w1 * w2))]}
+    expected1 = {2: [w1] * (len(token_ids) // w1 - 1)}
+    expected2 = {2: [w2 * int(i % w1 == 0) for i in range(len(token_ids) - (w1 * w2))]}
 
     o0 = ComparativeObserver(
-        to_what={2: [-1] + [1] * (len(token_ids) - 2)},
+        expected={2: [-1] + [1] * (len(token_ids) - 2)},
         on_comparison_ends=on_comparison_ends,
         verbose=False,
     )
     o1 = ComparativeObserver(
-        to_what=to_what1,
+        expected=expected1,
         on_comparison_ends=on_comparison_ends,
         verbose=False,
     )
     o2 = ComparativeObserver(
-        to_what=to_what2,
+        expected=expected2,
         on_comparison_ends=on_comparison_ends,
         verbose=True,
     )

@@ -11,6 +11,7 @@ from . import common as _c
 
 
 ObserverRecordType = Tuple[float, label_t, int]
+"""Observer records: (observation time, label, no of tokens with the label)"""
 ObserverHistoryType = list[ObserverRecordType]
 
 
@@ -30,7 +31,7 @@ class Observer(object):
         :param pt_ident: Custom identification string that will be used in debug prints.
         """
         self._records: ObserverHistoryType = []
-        """Records of observations"""
+        """Records of observations. A list of triplet (observation_time, token_label, token_count)"""
         self._lock: asyncio.Lock = asyncio.Lock()
         """Async lock for safe access to records"""
         self._record_limit: int = record_limit
@@ -151,23 +152,23 @@ class ComparativeObserver(Observer):
 
     def __init__(
         self,
-        to_what: Dict[int, list[Any]],
+        expected: Dict[int, list[Any]],
         on_comparison_ends: Callable[["ComparativeObserver"], None] | None = None,
         **kwargs: Any,
     ) -> None:
         """
         Constructor.
 
-        :param to_what: Values to be compared to.
-        :param on_comparison_ends: Callback function to be called when all values in :py:attr:`self.to_what` are used.
+        :param expected: Values to be compared to.
+        :param on_comparison_ends: Callback function to be called when all values in :py:attr:`self.expected` are used.
         """
         super().__init__(**kwargs)
-        self._to_what: Dict[int, list[Any]] = to_what
+        self._expected: Dict[int, list[Any]] = expected
         """The list of values to be compared to"""
-        self._to_what_index: int = 0
+        self._expected_index: int = 0
         """Index of the last value compared in the list"""
         self._is_still_comparing: bool = True
-        """Set to ``False`` when there are no values left to compare in :py:attr:`self._to_what`"""
+        """Set to ``False`` when there are no values left to compare in :py:attr:`self._expected`"""
         self._on_comparison_ends: Callable[["ComparativeObserver"], None] | None = (
             on_comparison_ends
         )
@@ -182,10 +183,10 @@ class ComparativeObserver(Observer):
         """
         if self._is_still_comparing:
             column_count: int = 0
-            for column in self._to_what:
-                if len(self._to_what[column]) <= self._to_what_index:
+            for column in self._expected:
+                if len(self._expected[column]) <= self._expected_index:
                     continue
-                value: Any = self._to_what[column][self._to_what_index]
+                value: Any = self._expected[column][self._expected_index]
                 if value >= 0 and record[column] != value:
                     raise RuntimeError(
                         f"{self._ident}: actual ({column}, {record[column]}) =/= expected ({column}, {value})"
@@ -193,10 +194,10 @@ class ComparativeObserver(Observer):
                 else:
                     _c.DEBUG_V(f"({column}, {record[column]}) == ({column}, {value})")
 
-                if len(self._to_what[column]) - 1 >= self._to_what_index:
+                if len(self._expected[column]) - 1 >= self._expected_index:
                     column_count += 1
 
-            self._to_what_index += 1
+            self._expected_index += 1
             if column_count == 0:
                 self._is_still_comparing = False
                 if self._verbose:
