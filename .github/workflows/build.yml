@@ -117,7 +117,7 @@ jobs:
 
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/soyutnet-test
+      url: https://test.pypi.org/p/soyutnet
 
     permissions:
       id-token: write

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "soyutnet"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
 ]
 requires-python = ">=3.8"
@@ -17,7 +17,7 @@ maintainers = [
 description = "Place/transition net (petri net) simulator that uses asyncio utilities as its backend"
 readme = "README.md"
 license = {file = "LICENSE.md"}
-keywords = ["pt-net", "simulator", "petri-net"]
+keywords = ["pt-net", "simulator", "petri-net", "discrete-event-systems"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "License :: OSI Approved :: MIT License",
