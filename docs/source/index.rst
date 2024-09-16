@@ -236,6 +236,15 @@ On the other hand, *SpecialPlace* class constructor accepts two extra optional a
    It can be used as an end point of PT net model. The tokens acquired by this function can be
    redirected to other utilities.
 
+Graphviz DOT file generation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Version ``0.2.0`` introduces Graphviz DOT file generation from the SoyutNet's net
+structure. `DOT language <https://graphviz.org/doc/info/lang.html>`__ is a special
+format for defining graph structures that can be parsed by
+`dot <https://graphviz.org/doc/info/command.html>`__ command to generate images
+in several formats.
+
 Example code
 ^^^^^^^^^^^^
 
@@ -243,30 +252,56 @@ The code below implements the `first example`_.
 
 .. code:: python
 
-   import asyncio
+    import sys
+    import asyncio
 
-   import soyutnet
-   from soyutnet.pt_common import PTRegistry
-   from soyutnet.place import Place
-   from soyutnet.transition import Transition
-   from soyutnet.common import GENERIC_LABEL, GENERIC_ID
+    import soyutnet
+    from soyutnet import SoyutNet
+    from soyutnet.constants import GENERIC_ID, GENERIC_LABEL
 
-   def main():
-       p1 = Place("p1", initial_tokens={ GENERIC_LABEL: [GENERIC_ID] })
-       p2 = Place("p2")
-       t1 = Transition("t1")
 
-       p1.connect(t1).connect(p2)
+    def main(do_not_run=False):
+        net = SoyutNet()
 
-       reg = PTRegistry()
-       reg.register(p1)
-       reg.register(p2)
-       reg.register(t1)
+        reg = net.PTRegistry()
+        p1 = net.Place("p1", initial_tokens={ GENERIC_LABEL: [GENERIC_ID] })
+        p2 = net.Place("p2")
+        t1 = net.Transition("t1")
 
-       asyncio.run(soyutnet.main(reg))
+        p1.connect(t1).connect(p2)
 
-   if __name__ == "__main__":
-       main()
+        reg.register(p1)
+        reg.register(p2)
+        reg.register(t1)
+
+        if do_not_run:
+            print(reg.generate_graph())
+            return
+
+        asyncio.run(soyutnet.main(reg))
+
+    if __name__ == "__main__":
+        main(int(sys.argv[1]) > 0 if len(sys.argv) > 1 else False)
+
+.. code:: bash
+
+    $ python3 first_example.py 1 # Generates the Graphviz dot file below.
+    digraph Net {
+        subgraph cluster_0 {
+            penwidth=3;
+            p1_0 [shape="circle",fontsize="20",style="filled",color="#000000",fillcolor="#dddddd",label="",xlabel="p1",height="1",width="1",penwidth=3];
+            p2_0 [shape="circle",fontsize="20",style="filled",color="#000000",fillcolor="#dddddd",label="",xlabel="p2",height="1",width="1",penwidth=3];
+            t1_0 [shape="box",fontsize="20",style="filled",color="#cccccc",fillcolor="#000000",label="",xlabel="t1",height="0.25",width="1.25",penwidth=3];
+            t1_0 -> p2_0 [fontsize="20",label=" 1",minlen="2",penwidth="3"];
+            p1_0 -> t1_0 [fontsize="20",label=" 1",minlen="2",penwidth="3"];
+        }
+        clusterrank=none;
+    }
+
+    $ python3 first_example.py 1 | dot -Tpng > first_example.png # Generates the image below
+
+.. image:: _static/images/first_example.png
+   :align: center
 
 .. _Goals:
 

@@ -248,12 +248,11 @@ class PTRegistry(Registry):
             penwidth,
         )
 
-    def generate_graph(self, net_name: str = "Net") -> str:
+    def generate_graph(self, net_name: str = "Net", indent: str = "\t") -> str:
         eol: str = os.linesep
         gv: str = f"digraph {net_name} {{" + eol
         gv_nodes: str = ""
         gv_arcs: str = ""
-        indent = "\t"
         for e in self.entries():
             obj: Any = e[1]
             if not isinstance(obj, PTCommon):
