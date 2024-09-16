@@ -4,7 +4,7 @@
 
 SoyutNet is a place/transition net (PT net, Petri net) simulator
 that uses Python's asyncio task and synchronization utilities as
-its backend. (*Soyut means abstract in Turkish.*)
+backend. (*Soyut means abstract in Turkish.*)
 
 Its documentation can be found at [https://soyutnet.readthedocs.io](https://soyutnet.readthedocs.io)
 

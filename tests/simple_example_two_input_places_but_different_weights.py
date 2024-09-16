@@ -2,16 +2,12 @@ import sys
 import asyncio
 
 import soyutnet
-from soyutnet.pt_common import PTRegistry
-from soyutnet.token import Token
-from soyutnet.place import SpecialPlace, Place
-from soyutnet.transition import Transition
-from soyutnet.common import GENERIC_ID, GENERIC_LABEL
-from soyutnet.observer import ComparativeObserver, Observer
+from soyutnet import SoyutNet
+from soyutnet.constants import GENERIC_ID, GENERIC_LABEL
 
 
 def main(w1=1, w2=1):
-    token_ids = [GENERIC_ID] * (10 * (w1 + w2))
+    token_ids = [GENERIC_ID] * 35
 
     async def producer(place):
         try:
@@ -25,7 +21,7 @@ def main(w1=1, w2=1):
     async def consumer(place):
         return
 
-    place_count = 4
+    place_count = 3
 
     def on_comparison_ends(observer):
         nonlocal place_count
@@ -35,44 +31,47 @@ def main(w1=1, w2=1):
             soyutnet.terminate()
 
     w3 = w1 + w2
-    c1 = w1 + w2
 
-    o00 = ComparativeObserver(
-        expected={2: [-1] + [1] * (len(token_ids) // c1 - c1)},
+    net = soyutnet.SoyutNet()
+
+    o00 = net.Observer(verbose=False)
+    o01 = net.Observer(verbose=False)
+    o10 = net.ComparativeObserver(
+        expected={1: [((GENERIC_LABEL, 3),)] * 3},
         on_comparison_ends=on_comparison_ends,
         verbose=False,
     )
-    o01 = ComparativeObserver(
-        expected={2: [-1] + [1] * (len(token_ids) // c1 - c1)},
+    o11 = net.ComparativeObserver(
+        expected={1: [((GENERIC_LABEL, 3),)] * 3},
         on_comparison_ends=on_comparison_ends,
         verbose=False,
     )
-    o10 = ComparativeObserver(
-        expected={2: [-1] + [w1] * (len(token_ids) // c1 - c1)},
+    o2 = net.ComparativeObserver(
+        expected={
+            1: [
+                ((GENERIC_LABEL, i),)
+                for i in [5, 4, 3, 7, 6, 5, 9, 8, 7, 11, 10, 9, 13, 12, 11]
+                + list(range(15, 1, -1))
+            ]
+        },
         on_comparison_ends=on_comparison_ends,
         verbose=False,
     )
-    o11 = ComparativeObserver(
-        expected={2: [-1] + [w2] * (len(token_ids) // c1 - c1)},
-        on_comparison_ends=on_comparison_ends,
-        verbose=False,
-    )
-    o2 = Observer(verbose=False)
-    o3 = Observer(verbose=False)
+    o3 = net.Observer(verbose=False)
 
-    p00 = SpecialPlace("p00", producer=producer, observer=o00)
-    p01 = SpecialPlace("p01", producer=producer, observer=o01)
-    p10 = Place("p10", observer=o10)
-    p11 = Place("p11", observer=o11)
-    p2 = Place("p2", observer=o2)
-    p3 = SpecialPlace("p3", consumer=consumer, observer=o3)
+    p00 = net.SpecialPlace("p00", producer=producer, observer=o00)
+    p01 = net.SpecialPlace("p01", producer=producer, observer=o01)
+    p10 = net.Place("p10", observer=o10)
+    p11 = net.Place("p11", observer=o11)
+    p2 = net.Place("p2", observer=o2)
+    p3 = net.SpecialPlace("p3", consumer=consumer, observer=o3)
 
-    t00 = Transition("t00")
-    t01 = Transition("t01")
-    t1 = Transition("t1")
-    t2 = Transition("t2")
+    t00 = net.Transition("t00")
+    t01 = net.Transition("t01")
+    t1 = net.Transition("t1")
+    t2 = net.Transition("t2")
 
-    reg = PTRegistry()
+    reg = net.PTRegistry()
 
     reg.register(p00)
     reg.register(p01)
@@ -92,8 +91,8 @@ def main(w1=1, w2=1):
             p01.connect(t01).connect(p11).connect(t1, weight=w2),
         )[0]
         .connect(p2, weight=w3)
-        .connect(t2, weight=w3)
-        .connect(p3, weight=w3)
+        .connect(t2, weight=1)
+        .connect(p3, weight=1)
     )
 
     try:
@@ -101,6 +100,11 @@ def main(w1=1, w2=1):
     except asyncio.exceptions.CancelledError:
         print("Simulation is terminated.")
 
+    gv = reg.generate_graph()
+    return gv
+
 
 if __name__ == "__main__":
-    main(int(sys.argv[1]), int(sys.argv[2]))
+    gv = main(int(sys.argv[1]), int(sys.argv[2]))
+    with open("test.gv", "w") as fh:
+        fh.write(gv)

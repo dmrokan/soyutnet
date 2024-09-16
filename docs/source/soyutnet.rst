@@ -1,12 +1,18 @@
 SoyutNet
 ========
 
+soyutnet module
+---------------
+
+.. automodule:: soyutnet
+   :members:
+   :show-inheritance:
+
 soyutnet.pt\_common module
 --------------------------
 
 .. automodule:: soyutnet.pt_common
    :members:
-   :undoc-members:
    :show-inheritance:
 
 soyutnet.place module
@@ -14,7 +20,6 @@ soyutnet.place module
 
 .. automodule:: soyutnet.place
    :members:
-   :undoc-members:
    :show-inheritance:
 
 soyutnet.transition module
@@ -22,7 +27,6 @@ soyutnet.transition module
 
 .. automodule:: soyutnet.transition
    :members:
-   :undoc-members:
    :show-inheritance:
 
 soyutnet.token module
@@ -30,7 +34,6 @@ soyutnet.token module
 
 .. automodule:: soyutnet.token
    :members:
-   :undoc-members:
    :show-inheritance:
 
 soyutnet.observer module
@@ -38,7 +41,6 @@ soyutnet.observer module
 
 .. automodule:: soyutnet.observer
    :members:
-   :undoc-members:
    :show-inheritance:
 
 soyutnet.registry module
@@ -46,27 +48,12 @@ soyutnet.registry module
 
 .. automodule:: soyutnet.registry
    :members:
-   :undoc-members:
    :show-inheritance:
 
-soyutnet.common module
-----------------------
-
-.. automodule:: soyutnet.common
-   :members:
-   :show-inheritance:
-
-soyutnet.global\_defs module
+soyutnet.constants module
 ----------------------------
 
-.. automodule:: soyutnet.global_defs
+.. automodule:: soyutnet.constants
    :members:
    :show-inheritance:
 
-Module contents
----------------
-
-.. automodule:: soyutnet
-   :members:
-   :undoc-members:
-   :show-inheritance:

@@ -4,9 +4,13 @@ from typing import (
     Dict,
 )
 
-from .global_defs import *
-from . import common as _c
-from .pt_common import PTCommon, PTRegistry
+from .constants import *
+from .pt_common import PTCommon
+
+FiringRecordType = Tuple[float]
+"""Firing record type"""
+FiringHistoryType = list[FiringRecordType]
+"""Type for list of firing records"""
 
 
 class Transition(PTCommon):
@@ -14,7 +18,9 @@ class Transition(PTCommon):
     Defines PTNet transitions.
     """
 
-    def __init__(self, name: str = "", **kwargs: Any) -> None:
+    def __init__(
+        self, name: str = "", record_firing: bool = False, **kwargs: Any
+    ) -> None:
         """
         Constructor.
 
@@ -23,6 +29,13 @@ class Transition(PTCommon):
         super().__init__(name=name, **kwargs)
         self._no_of_times_enabled: int = 0
         """Counts the number of time the transition is enabled"""
+        self._firing_records: FiringHistoryType = []
+        """Keeps timestampts of each firing of the transition: py:attr:`soyutnet.transition.FiringRecordType`"""
+        self._record_firing: bool = record_firing
+        """Enables recording firings of transitions"""
+
+    def _new_firing_record(self) -> None:
+        self._firing_records.append((self.net.time(),))
 
     async def _process_input_arcs(self) -> bool:
         """
@@ -30,20 +43,23 @@ class Transition(PTCommon):
 
         :return: ``True`` if the transition is enabled, else goes back to waiting input arcs to be enabled.
         """
-        _c.DEBUG_V(f"{self._ident}: process_input_arcs")
+        self.net.DEBUG_V(f"{self._ident}: process_input_arcs")
         async for arc in self._get_input_arcs():
             if not arc.is_enabled():
                 return False
 
-        _c.DEBUG_V(f"Enabled!")
+        self.net.DEBUG_V(f"Enabled!")
         self._no_of_times_enabled += 1
+        if self._record_firing:
+            self._new_firing_record()
 
         async for arc in self._get_input_arcs():
-            await arc.observe_input_places()
+            await arc.observe_input_places(self._name)
             count: int = arc.weight
             async for token in arc.wait():
-                _c.DEBUG_V(f"Received '{token}' from {arc}")
+                self.net.DEBUG_V(f"Received '{token}' from {arc}")
                 self._put_token(token)
+                await arc.notify_observer(token[0])
                 count -= 1
                 if count <= 0:
                     break
@@ -66,7 +82,7 @@ class Transition(PTCommon):
 
         Sends tokens to the output places when required conditions are satisfied.
         """
-        _c.DEBUG_V(f"{self._ident}: process_output_arcs")
+        self.net.DEBUG_V(f"{self._ident}: process_output_arcs")
         async for arc in self._get_output_arcs():
             count: int = arc.weight
             while count > 0:
@@ -77,7 +93,7 @@ class Transition(PTCommon):
                         break
                 if not token:
                     break
-                _c.DEBUG_V(f"Sending '{token}' to {arc}")
+                self.net.DEBUG_V(f"Sending '{token}' to {arc}")
                 await arc.send(token)
                 count -= 1
 
@@ -88,3 +104,11 @@ class Transition(PTCommon):
         :return: Number of times the transition is enabled.
         """
         return self._no_of_times_enabled
+
+    def get_firing_records(self) -> FiringHistoryType:
+        """
+        Returns all firing records. :py:attr:`soyutnet.transition.Transition._firing_records`
+
+        :return: Firing records.
+        """
+        return self._firing_records

@@ -2,12 +2,8 @@ import sys
 import asyncio
 
 import soyutnet
-from soyutnet.pt_common import PTRegistry
-from soyutnet.token import Token
-from soyutnet.place import SpecialPlace, Place
-from soyutnet.transition import Transition
-from soyutnet.common import GENERIC_ID, GENERIC_LABEL
-from soyutnet.observer import ComparativeObserver, Observer
+from soyutnet import SoyutNet
+from soyutnet.constants import GENERIC_ID, GENERIC_LABEL
 
 
 def main(token_count=12):
@@ -33,27 +29,30 @@ def main(token_count=12):
         if place_count == 0:
             soyutnet.terminate()
 
-    o00 = ComparativeObserver(
-        expected={2: [-1] + [1] * (len(token_ids) // 2 - 2)},
-        on_comparison_ends=on_comparison_ends,
-        verbose=False,
-    )
-    o01 = ComparativeObserver(
-        expected={2: [-1] + [1] * (len(token_ids) // 2 - 2)},
-        on_comparison_ends=on_comparison_ends,
-        verbose=False,
-    )
-    o1 = ComparativeObserver(
-        expected={2: [1] * (len(token_ids) // 2 - 1)},
-        on_comparison_ends=on_comparison_ends,
-        verbose=False,
-    )
-    p00 = SpecialPlace("p00", producer=producer, observer=o00)
-    p01 = SpecialPlace("p01", producer=producer, observer=o01)
-    p1 = SpecialPlace("p1", consumer=consumer, observer=o1)
-    t1 = Transition("t1")
+    net = SoyutNet()
 
-    reg = PTRegistry()
+    o00 = net.ComparativeObserver(
+        expected={1: [((GENERIC_LABEL, 1),)] * (len(token_ids) // 2 - 1)},
+        on_comparison_ends=on_comparison_ends,
+        verbose=False,
+    )
+    o01 = net.ComparativeObserver(
+        expected={1: [((GENERIC_LABEL, 1),)] * (len(token_ids) // 2 - 1)},
+        on_comparison_ends=on_comparison_ends,
+        verbose=False,
+    )
+    o1 = net.ComparativeObserver(
+        expected={1: [((GENERIC_LABEL, i),) for i in range(0, len(token_ids), 2)]},
+        on_comparison_ends=on_comparison_ends,
+        verbose=True,
+    )
+
+    p00 = net.SpecialPlace("p00", producer=producer, observer=o00)
+    p01 = net.SpecialPlace("p01", producer=producer, observer=o01)
+    p1 = net.SpecialPlace("p1", consumer=consumer, observer=o1)
+    t1 = net.Transition("t1")
+
+    reg = net.PTRegistry()
 
     reg.register(p00)
     reg.register(p01)
@@ -62,9 +61,12 @@ def main(token_count=12):
 
     p00.connect(t1)
     p01.connect(t1)
-    t1.connect(p1)
+    t1.connect(p1, weight=2)
 
-    asyncio.run(soyutnet.main(reg))
+    try:
+        asyncio.run(soyutnet.main(reg))
+    except asyncio.exceptions.CancelledError:
+        print("Simulation is terminated.")
 
 
 if __name__ == "__main__":

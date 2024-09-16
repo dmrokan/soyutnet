@@ -1,24 +1,21 @@
 import sys
 import asyncio
+from weakref import ref, ReferenceType
 from typing import (
     Any,
     AsyncGenerator,
     Self,
     Dict,
     Tuple,
-    Coroutine,
     Generator,
     Awaitable,
     Callable,
     TYPE_CHECKING,
 )
 
-from .global_defs import *
-from . import common as _c
-from .registry import Registry
+from .constants import *
 from .token import Token
 from .observer import Observer
-from weakref import ref, ReferenceType
 
 
 if TYPE_CHECKING:
@@ -37,7 +34,7 @@ class Arc(object):
         start: Any,
         end: Any,
         weight: int = 1,
-        labels: list[label_t] = [_c.GENERIC_LABEL],
+        labels: list[label_t] = [GENERIC_LABEL],
     ) -> None:
         """
         Constructor.
@@ -50,17 +47,17 @@ class Arc(object):
         self.start: ReferenceType[Any] = ref(start)
         """Input place/transition"""
         self.index_at_start: int = -1
-        """Index in the list of output arcs of :py:attr:`self.start`"""
+        """Index in the list of output arcs of :py:attr:`soyutnet.pt_common.Arc.start`"""
         self.end: ReferenceType[Any] = ref(end)
         """Output place/transition"""
         self.index_at_end: int = -1
-        """Index in the list of input arcs of :py:attr:`self.end`"""
+        """Index in the list of output arcs of :py:attr:`soyutnet.pt_common.Arc.end`"""
         self.weight: int = weight
         """Arc weight"""
         self.labels: list[label_t] = list(labels)
         """The list of arc labels"""
         self._queue: Queue = Queue(maxsize=weight)
-        """Input/output queue for transmitting tokens from :py:attr:`self.start` to :py:attr:`self.end`"""
+        """Input/output queue for transmitting tokens from :py:attr:`soyutnet.pt_common.Arc.start` to :py:attr:`soyutnet.pt_common.Arc.end`"""
 
     def __str__(self) -> str:
         """
@@ -83,7 +80,7 @@ class Arc(object):
 
     async def wait(self) -> AsyncGenerator[TokenType, None]:
         """
-        Acquires :py:attr:`self.weight` tokens from :py:attr:`self.start` and yields them to :py:attr:`self.end`
+        Acquires :py:attr:`soyutnet.pt_common.Arc.weight` tokens from :py:attr:`soyutnet.pt_common.Arc.start` and yields them to :py:attr:`soyutnet.pt_common.Arc.end`
 
         :return: Tokens.
         """
@@ -106,21 +103,36 @@ class Arc(object):
 
     def is_enabled(self) -> bool:
         """
-        It is checked by the output transition at :py:attr:`self.end` to detemine the transition is enabled or not.
+        It is checked by the output transition at :py:attr:`soyutnet.pt_common.Arc.end` to detemine the transition is enabled or not.
 
         :return: ``True`` if enabled.
         """
         return self._queue.full()
 
-    async def observe_input_places(self) -> None:
+    async def observe_input_places(self, requester: str = "") -> None:
         """
-        It is called by the output transition at :py:attr:`self.end` after the transition is enabled.
+        It is called by the output transition at :py:attr:`soyutnet.pt_common.Arc.end` after the transition is enabled.
 
         It records the tokens counts just before the transition happens.
+
+        :param requester: The identity of caller.
         """
         start_ref: Any = self.start()
         if start_ref is not None:
-            await start_ref.observe(self._queue.qsize())
+            await start_ref.observe(requester=requester)
+
+    async def notify_observer(self, label: label_t, increment: int = -1) -> None:
+        start_ref: Any = self.start()
+        if start_ref is not None:
+            await start_ref._observer.inc_token_count(label, increment)
+
+    def get_graphviz_definition(self, t: int) -> str:
+        start_ref: Any = self.start()
+        end_ref: Any = self.end()
+        if end_ref is not None and start_ref is not None:
+            return f"""{start_ref._name}_{t} -> {end_ref._name}_{t} [fontsize="20",label=" {self.weight}",minlen="2",penwidth="3"];"""
+
+        return ""
 
 
 class PTCommon(Token):
@@ -167,7 +179,7 @@ class PTCommon(Token):
         Places tokens into a list based on its label.
 
         :param token: A label and ID pair.
-        :param strict: If set the label of token must already be in :py:attr:`self._tokens` dictionary.
+        :param strict: If set the label of token must already be in :py:attr:`soyutnet.pt_common.PTCommon._tokens` dictionary.
         :return: Number of tokens with the given label.
         """
         label: label_t = token[0]
@@ -203,7 +215,7 @@ class PTCommon(Token):
             # TODO: Handle model error
             _, _, exc_tb = sys.exc_info()
             if exc_tb is not None:
-                _c.ERROR_V(
+                self.net.ERROR_V(
                     f"{e} [{exc_tb.tb_frame}, {exc_tb.tb_lineno}, {exc_tb.tb_lasti}]"
                 )
         except IndexError as e:
@@ -211,7 +223,7 @@ class PTCommon(Token):
             # TODO: Is it a model error or can be passed?
             _, _, exc_tb = sys.exc_info()
             if exc_tb is not None:
-                _c.ERROR_V(
+                self.net.ERROR_V(
                     f"{e} [{exc_tb.tb_frame}, {exc_tb.tb_lineno}, {exc_tb.tb_lasti}]"
                 )
 
@@ -263,13 +275,13 @@ class PTCommon(Token):
 
         :return: If ``True`` proceeds to processing tokens and output arcs, else continues waiting for enabled arcs.
         """
-        _c.DEBUG_V(f"{self._ident}: process_input_arcs")
+        self.net.DEBUG_V(f"{self._ident}: process_input_arcs")
         async for arc in self._get_input_arcs():
             if not arc.is_enabled():
-                _c.DEBUG_V(f"Not enabled {arc}")
+                self.net.DEBUG_V(f"Not enabled {arc}")
                 continue
             async for token in arc.wait():
-                _c.DEBUG_V(f"Received '{token}' from {arc}")
+                self.net.DEBUG_V(f"Received '{token}' from {arc}")
                 self._put_token(token)
                 if self._observer is not None:
                     await self._observer.inc_token_count(token[0])
@@ -280,7 +292,7 @@ class PTCommon(Token):
         """
         Sends tokens to the output PTs.
         """
-        _c.DEBUG_V(f"{self._ident}: process_output_arcs")
+        self.net.DEBUG_V(f"{self._ident}: process_output_arcs")
         async for arc in self._get_output_arcs():
             token: TokenType = tuple()
             for label in arc.labels:
@@ -288,30 +300,35 @@ class PTCommon(Token):
                 if token:
                     break
             if not token:
-                _c.DEBUG_V(f"No token, skipping '{arc}'")
+                self.net.DEBUG_V(f"No token, skipping '{arc}'")
                 continue
-            _c.DEBUG_V(f"Sending '{token}' to {arc}")
+            self.net.DEBUG_V(f"Sending '{token}' to {arc}")
             await arc.send(token)
-            if self._observer is not None:
-                await self._observer.inc_token_count(token[0], inc=-1)
 
     async def _process_tokens(self) -> bool:
         """
         Processes input tokens before sending if required.
 
-        :return: ``True`` by default, else goes back to :py:func:`self._process_input_arcs`.
+        :return: ``True`` by default, else goes back to :py:func:`soyutnet.pt_common.PTCommon._process_input_arcs`.
         """
-        _c.DEBUG_V(f"{self._ident}: process_tokens")
+        self.net.DEBUG_V(f"{self._ident}: process_tokens")
         if self._processor is None:
             return True
 
         return await self._processor(self)
 
-    async def _observe(self, token_count_in_arc: int = 0) -> None:
+    async def _observe(self, requester: str = "") -> None:
         """
         Dummy observer.
         """
         pass
+
+    async def _set_initial_marking(self) -> None:
+        if self._observer is not None:
+            for label in self._tokens:
+                await self._observer.inc_token_count(
+                    label, self._get_token_count(label)
+                )
 
     def ident(self) -> str:
         """
@@ -339,7 +356,7 @@ class PTCommon(Token):
         return True
 
     def connect(
-        self, other: Self, weight: int = 1, labels: list[label_t] = [_c.GENERIC_LABEL]
+        self, other: Self, weight: int = 1, labels: list[label_t] = [GENERIC_LABEL]
     ) -> Self:
         """
         Connects the output of `self` to the input of an other PT by creating an Arc in between.
@@ -359,19 +376,19 @@ class PTCommon(Token):
                 self._tokens[label] = []
             if label not in other._tokens:
                 other._tokens[label] = []
-        _c.DEBUG_V(f"{self._ident}: Connected arc: {str(arc)}")
+        self.net.DEBUG_V(f"{self._ident}: Connected arc: {str(arc)}")
 
         return other
 
-    async def observe(self, token_count_in_arc: int = 0) -> None:
+    async def observe(self, requester: str = "") -> None:
         """
         Public observe function called by output arcs.
-        """
-        await self._observe(token_count_in_arc)
 
-    def put_token(
-        self, label: label_t = _c.GENERIC_LABEL, id: id_t = _c.GENERIC_ID
-    ) -> int:
+        :param requester: The identity of caller.
+        """
+        await self._observe(requester=requester)
+
+    def put_token(self, label: label_t = GENERIC_LABEL, id: id_t = GENERIC_ID) -> int:
         """
         Places tokens into a list based on its label.
 
@@ -412,46 +429,11 @@ async def _loop(pt: PTCommon) -> None:
     else:
         return
 
-    _c.DEBUG_V(f"{pt.ident()}: Loop started")
+    await pt._set_initial_marking()
+    pt.net.DEBUG_V(f"{pt.ident()}: Loop started")
 
     while await pt.should_continue():
-        await _c.sleep(LOOP_DELAY)
+        await pt.net.sleep(pt.net.LOOP_DELAY)
         pass
 
-    _c.DEBUG_V(f"{pt.ident()}: Loop ended")
-
-
-class PTRegistry(Registry):
-    """
-    Keeps track of PTCommon instances.
-    """
-
-    def __init__(self) -> None:
-        """
-        Constructor.
-        """
-        super().__init__()
-
-    def get_loops(self) -> Generator[Coroutine[Any, Any, None], None, None]:
-        """
-        Yields asyncio task functions assigned to the PT.
-
-        :return: Asyncio task function.
-        """
-        for label in self._directory:
-            for entry in self._directory[label]:
-                yield _loop(entry[1])
-
-    def register(self, pt: PTCommon) -> id_t:  # type: ignore[override]
-        """
-        Registers a PT.
-
-        :param pt: PTCommon instance.
-        :return: Unique ID assigned to the PT.
-        """
-
-        def callback(new_id: id_t, pt: PTCommon) -> None:
-            pt._id = new_id
-            _c.DEBUG_V(f"Registered: {pt.ident()}")
-
-        return super().register(pt, callback)
+    pt.net.DEBUG_V(f"{pt.ident()}: Loop ended")

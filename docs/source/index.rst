@@ -5,7 +5,7 @@ SoyutNet is a place/transition net (PT net, Petri net) simulator
 that uses Python's asyncio task and synchronization utilities as
 backend. (*Soyut means abstract in Turkish.*)
 
-This documents gives a brief information on `PT nets`_. Then, summarizes
+This documents gives a brief information on `PT nets`_, summarizes
 its implementation in `SoyutNet`_ and discusses the project's `Goals`_.
 
 `Code repository 🔗 <https://github.com/dmrokan/soyutnet>`_
@@ -26,6 +26,7 @@ An example
 
 .. image:: _static/images/first_example_T0.png
    :width: 480
+   :align: center
 
 In the diagram,
 
@@ -46,6 +47,7 @@ The final state is:
 
 .. image:: _static/images/first_example_T1.png
    :width: 480
+   :align: center
 
 The model reached its final state according to the rules explained below.
 
@@ -99,6 +101,9 @@ current marking of the input and output places (number of tokens in each place).
 
 where :math:`M^{\ast}` is the new marking of input and output places after :math:`t_i` is fired.
 
+.. image:: _static/images/io_arc_weights.png
+   :align: center
+
 Labeled PT net
 ^^^^^^^^^^^^^^
 
@@ -106,6 +111,7 @@ An extension of PT nets called **labeled PT nets** which assigns a label to the 
 
 .. image:: _static/images/first_example_labeled_PT.png
    :width: 720
+   :align: center
 
 The transition :math:`t_1` expects a specific type of token (represented by ◆) and transforms
 it to a token with another label (▲).
@@ -124,11 +130,11 @@ Data structures
 
 **Label**
     An integer value. Its type is ``label_t = int``. It can be the generic label
-    (:py:attr:`soyutnet.common.GENERIC_LABEL`) or any positive integer.
+    (:py:attr:`soyutnet.constants.GENERIC_LABEL`) or any positive integer.
 
 **ID**
     An integer value. Its type is ``id_t = int``. It can be the generic ID
-    (:py:attr:`soyutnet.common.GENERIC_ID`) or any positive integer.
+    (:py:attr:`soyutnet.constants.GENERIC_ID`) or any positive integer.
 
 **Token**
     It is defined as a tuple of a label and an ID.
@@ -180,11 +186,32 @@ Data structures
 
 .. image:: _static/images/sum_of_arc_weights.png
    :width: 480
+   :align: center
 
-**Note:** SoyutNet's places and transitions accept a callback function named as ``processor``
+*Note:* SoyutNet's places and transitions accept a callback function named as ``processor``
 (:py:attr:`soyutnet.pt_common.PTCommon._processor`). It is called after tokens acquired from input
 arcs and before sending them through output arcs. SoyutNet's additional rule can be worked around
 by a custom processor callback that duplicates or discards input tokens.
+
+**Observer records**
+    If a place has an observer attached, the observer keeps track of tokens when an output
+    transition is fired. It records:
+
+    * Time instant (for keeping track of the order of firings)
+    * A tuple of token labels and count of tokens just before the firing
+    * The identity of transition fired
+
+      .. code:: python
+
+         records = [
+             ( time1, ( (label_1, count_11), (label_2, count_12), ... ), "<name of transition>" ),
+             ( time2, ( (label_1, count_21), (label_2, count_22), ... ), "<name of transition>" ),
+             ...
+         ]
+
+     The records (:py:attr:`soyutnet.observer.ObserverHistoryType`) saved in distinct observers can
+     be merged by :py:func:`soyutnet.registry.PTRegistry.get_merged_records` at the end of simulation.
+
 
 Special place
 ^^^^^^^^^^^^^

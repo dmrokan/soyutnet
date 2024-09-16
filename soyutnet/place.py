@@ -6,9 +6,8 @@ from typing import (
     Callable,
 )
 
-from .global_defs import *
-from . import common as _c
-from .pt_common import PTCommon, PTRegistry, Arc
+from .constants import *
+from .pt_common import PTCommon, Arc
 from .observer import Observer
 
 
@@ -35,14 +34,14 @@ class Place(PTCommon):
         """
         super().__init__(name=name, **kwargs)
         self._observer: Observer = (
-            Observer(observer_record_limit, verbose=observer_verbose)
+            Observer(observer_record_limit, verbose=observer_verbose, net=kwargs["net"])
             if observer is None
             else observer
         )
         if not self._observer._ident:
             self._observer._ident = self.ident()
 
-    async def _observe(self, token_count_in_arc: int = 0) -> None:
+    async def _observe(self, requester: str = "") -> None:
         """
         Save token counts for each label to the observer's records.
 
@@ -50,7 +49,7 @@ class Place(PTCommon):
 
         :param token_count_in_arc: Number of tokens in the output arc of places must also be added to the count.
         """
-        await self._observer.save(token_count_in_arc)
+        await self._observer.save(requester=requester)
 
 
 class SpecialPlace(Place):
@@ -69,20 +68,20 @@ class SpecialPlace(Place):
         Constructor.
 
         :param name: Name of the place.
-        :param consumer: Custom :py:func:`place._process_input_arcs` function.
-        :param producer: Custom :py:func:`place._process_output_arcs` function.
+        :param consumer: Custom :py:func:`soyutnet.pt_common.PTCommon._process_input_arcs` function.
+        :param producer: Custom :py:func:`soyutnet.pt_common.PTCommon._process_output_arcs` function.
         """
         super().__init__(name=name, **kwargs)
         self._consumer: Callable[["SpecialPlace"], Awaitable[bool]] | None = consumer
-        """Custom :py:func:`place._process_input_arcs` function."""
+        """Custom :py:func:`soyutnet.pt_common.PTCommon._process_input_arcs` function."""
         self._producer: Callable[["SpecialPlace"], Awaitable[TokenType]] | None = (
             producer
         )
-        """Custom :py:func:`place._process_output_arcs` function."""
+        """Custom :py:func:`soyutnet.pt_common.PTCommon._process_output_arcs` function."""
 
     async def _process_input_arcs(self) -> bool:
         """
-        Calls custom producer function. If it is ``None`` calls :py:func:`place._process_input_arcs` function.
+        Calls custom producer function. If it is ``None`` calls :py:func:`soyutnet.pt_common.PTCommon._process_input_arcs` function.
 
         :return: If ``True`` continues to processing tokens and output arc, else loops back to processing input arcs.
         """
@@ -112,7 +111,7 @@ class SpecialPlace(Place):
 
     async def _process_tokens(self) -> bool:
         """
-        Calls custom consumer function. If it is ``None`` calls :py:func:`place._process_tokens` function.
+        Calls custom consumer function. If it is ``None`` calls :py:func:`soyutnet.pt_common.PTCommon._process_tokens` function.
         """
         if not await super()._process_tokens():
             return False
@@ -122,9 +121,9 @@ class SpecialPlace(Place):
             token_count_in_arc = 0
             if self._producer is not None:
                 token_count_in_arc = 1
-            await self._observe(token_count_in_arc=token_count_in_arc)
+            await self._observe(self._name)
 
         return True
 
-    async def observe(self, token_count_in_arc: int = 0) -> None:
+    async def observe(self, requester: str = "") -> None:
         return

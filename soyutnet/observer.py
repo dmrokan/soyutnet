@@ -6,22 +6,28 @@ from typing import (
     Callable,
 )
 
-from .global_defs import *
-from . import common as _c
+from .constants import *
 
 
-ObserverRecordType = Tuple[float, label_t, int]
-"""Observer records: (observation time, label, no of tokens with the label)"""
+ObserverRecordType = Tuple[float, Tuple[TokenType, ...], str]
+"""Observer records: (observation time, label, no of tokens with the label, identity of requester of the record)"""
 ObserverHistoryType = list[ObserverRecordType]
+"""Type for a list of :py:attr:`soyutnet.observer.ObserverHistoryType`"""
+MergedRecordsType = list[Tuple[str, ObserverRecordType | Tuple[float]]]
+"""A type for list of all records of all observers"""
 
 
-class Observer(object):
+class Observer(BaseObject):
     """
     Can be assigned to a place to observe its state.
     """
 
     def __init__(
-        self, record_limit: int = 0, verbose: bool = False, pt_ident: str = ""
+        self,
+        record_limit: int = 0,
+        verbose: bool = False,
+        pt_ident: str = "",
+        **kwargs: Any,
     ) -> None:
         """
         Constructor.
@@ -30,8 +36,9 @@ class Observer(object):
         :param verbose: Print observations if ``True``.
         :param pt_ident: Custom identification string that will be used in debug prints.
         """
+        super().__init__(**kwargs)
         self._records: ObserverHistoryType = []
-        """Records of observations. A list of triplet (observation_time, token_label, token_count)"""
+        """Records of observations. :py:attr:`soyutnet.observer.ObserverRecordType`"""
         self._lock: asyncio.Lock = asyncio.Lock()
         """Async lock for safe access to records"""
         self._record_limit: int = record_limit
@@ -82,7 +89,7 @@ class Observer(object):
         for record in self._records:
             output += f"  {record}\n"
 
-        _c.DEBUG(output)
+        self.net.DEBUG(output)
 
     async def _save(self, record: ObserverRecordType) -> None:
         """
@@ -91,28 +98,32 @@ class Observer(object):
         :param record: Record.
         """
         if self._verbose:
-            _c.DEBUG(f"REC: {self._ident}:", record)
+            self.net.DEBUG(f"REC: {self._ident}:", record)
         self._add_record(record)
         await self._clean_records()
 
-    async def save(self, token_count_in_arc: int = 0) -> None:
+    async def save(self, requester: str = "") -> None:
         """
         Save counted tokens to the list of records.
 
         It is called by output transitions when they are enabled.
 
-        :param token_count_in_arc: Number of tokens in the output arc of places must also be added to the count.
+        :param requester: The identity of the caller.
         """
+        if not requester:
+            requester = "n/a"
         async with self._lock:
+            tmp: list[TokenType] = []
             for label in self._token_counters:
-                time: float = _c.time()
-                record: ObserverRecordType = (
-                    time,
-                    label,
-                    self._token_counters[label] + token_count_in_arc,
-                )
-                await self._save(record)
-                self._token_counters[label] = 0
+                tmp.append((label, self._token_counters[label]))
+            tokens: Tuple[TokenType, ...] = tuple(tmp)
+            time: float = self.net.time()
+            record: ObserverRecordType = (
+                time,
+                tokens,
+                requester,
+            )
+            await self._save(record)
 
     def get_records(self, column: int = -1) -> list[Any]:
         """
@@ -168,7 +179,7 @@ class ComparativeObserver(Observer):
         self._expected_index: int = 0
         """Index of the last value compared in the list"""
         self._is_still_comparing: bool = True
-        """Set to ``False`` when there are no values left to compare in :py:attr:`self._expected`"""
+        """Set to ``False`` when there are no values left to compare in :py:attr:`soyutnet.observer.ComparativeObserver._expected`"""
         self._on_comparison_ends: Callable[["ComparativeObserver"], None] | None = (
             on_comparison_ends
         )
@@ -187,12 +198,14 @@ class ComparativeObserver(Observer):
                 if len(self._expected[column]) <= self._expected_index:
                     continue
                 value: Any = self._expected[column][self._expected_index]
-                if value >= 0 and record[column] != value:
+                if record[column] != value:
                     raise RuntimeError(
                         f"{self._ident}: actual ({column}, {record[column]}) =/= expected ({column}, {value})"
                     )
                 else:
-                    _c.DEBUG_V(f"({column}, {record[column]}) == ({column}, {value})")
+                    self.net.DEBUG_V(
+                        f"({column}, {record[column]}) == ({column}, {value})"
+                    )
 
                 if len(self._expected[column]) - 1 >= self._expected_index:
                     column_count += 1
@@ -203,9 +216,9 @@ class ComparativeObserver(Observer):
                 if self._verbose:
                     await self._display_records()
                 if self._on_comparison_ends is not None:
-                    _c.DEBUG("comparison ends")
+                    self.net.DEBUG("comparison ends")
                     self._on_comparison_ends(self)
 
         if self._verbose:
-            _c.DEBUG(f"REC: {self._ident}:", record)
+            self.net.DEBUG(f"REC: {self._ident}:", record)
         self._add_record(record)

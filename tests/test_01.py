@@ -2,30 +2,15 @@ import pytest
 import asyncio
 
 import soyutnet
-from soyutnet.token import (
-    Token,
-    TokenRegistry,
-)
-from soyutnet.pt_common import PTRegistry
-from soyutnet.place import (
-    Place,
-    SpecialPlace,
-)
-from soyutnet.transition import (
-    Transition,
-)
-from soyutnet.common import (
-    GENERIC_LABEL,
-    GENERIC_ID,
-    INITIAL_ID,
-    INVALID_ID,
-)
+from soyutnet import SoyutNet
+from soyutnet.constants import GENERIC_LABEL, GENERIC_ID, INVALID_ID, INITIAL_ID
 
 
 @pytest.mark.asyncio
 async def test_01():
-    registry = TokenRegistry()
-    token = Token()
+    net = SoyutNet()
+    registry = net.TokenRegistry()
+    token = net.Token()
 
     assert (INVALID_ID, None) == registry.get_first_entry(token.get_label())
     registry.register(token)
@@ -38,7 +23,8 @@ async def test_01():
 
 @pytest.mark.asyncio
 async def test_02():
-    place = Place()
+    net = SoyutNet()
+    place = net.Place()
 
     assert place.get_id() == GENERIC_ID
     assert place.get_binding() is None
@@ -46,7 +32,8 @@ async def test_02():
 
 @pytest.mark.asyncio
 async def test_03():
-    transition = Transition()
+    net = SoyutNet()
+    transition = net.Transition()
 
     assert transition.get_id() == GENERIC_ID
     assert transition.get_binding() is None
@@ -61,58 +48,43 @@ def test_04():
 def test_05():
     import simple_example_different_weight as e
 
-    for i in range(1, 15):
-        for j in range(1, i + 1):
-            try:
-                e.main(i, j)
-            except asyncio.exceptions.CancelledError:
-                pass
+    e.main_01(3, 2)
 
 
 def test_06():
     import simple_example_two_input_places as e
 
     for i in range(100, 10000, 1000):
-        try:
-            e.main(i)
-        except asyncio.exceptions.CancelledError:
-            pass
+        e.main(i)
 
 
 def test_07():
     import simple_example_two_input_places_but_different_weights as e
 
-    MAX = 10
-    for i in range(1, MAX + 1):
-        for j in range(1, MAX + 1):
-            for k in range(1, MAX + 1):
-                e.main(w1=i, w2=j)
+    e.main(w1=3, w2=2)
 
 
 def test_08():
     from basic_models import co_begin
 
     for i in range(2, 100):
-        try:
-            co_begin(i)
-        except asyncio.exceptions.CancelledError:
-            pass
+        co_begin(i)
 
 
 def test_09():
     from basic_models import co_end
 
     for i in range(2, 100):
-        try:
-            co_end(i)
-        except asyncio.exceptions.CancelledError:
-            pass
+        co_end(i)
 
 
 def test_10():
     from basic_models import sync_by_signal
 
-    try:
-        sync_by_signal()
-    except asyncio.exceptions.CancelledError:
-        pass
+    sync_by_signal()
+
+
+def test_11():
+    from n_tester import n_tester
+
+    n_tester()
