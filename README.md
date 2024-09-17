@@ -35,21 +35,22 @@ This example simulates the PT net given in the diagram below.
 import asyncio
 
 import soyutnet
-from soyutnet.pt_common import PTRegistry
-from soyutnet.place import Place
-from soyutnet.transition import Transition
-from soyutnet.common import GENERIC_LABEL, GENERIC_ID
+from soyutnet import SoyutNet
+from soyutnet.constants import GENERIC_ID, GENERIC_LABEL
+
 
 def main():
-    p1 = Place("p1", initial_tokens={ GENERIC_LABEL: [GENERIC_ID] })
-    p2 = Place("p2")
-    t1 = Transition("t1")
+    net = SoyutNet()
+
+    reg = net.PTRegistry()
+    p1 = net.Place("p1", initial_tokens={ GENERIC_LABEL: [GENERIC_ID] })
+    p2 = net.Place("p2")
+    t1 = net.Transition("t1")
     """Define places and transitions (PTs)"""
 
     p1.connect(t1).connect(p2)
-    """Create connections"""
+    """Connect PTs"""
 
-    reg = PTRegistry()
     reg.register(p1)
     reg.register(p2)
     reg.register(t1)
