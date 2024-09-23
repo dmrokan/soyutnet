@@ -128,11 +128,15 @@ A list of place markings that show token counts for each label recorded just bef
 [('<name of the place>', (<event timestamp in seconds>, ((<token label>, <token count>),), '<firing transition>')), ...]
 ```
 
-**How to generate the graph above**
+**How to generate the graph**
 
 ```bash
 sudo apt install graphviz # Which provides 'dot'
 python tests/readme_example.py 2>&1 > /dev/null | dot -Tpng > readme_example.png
 ```
+
+Outputs:
+
+![PT net graph](https://raw.githubusercontent.com/dmrokan/soyutnet/main/docs/source/_static/images/first_example.png "PT net graph")
 
 ## [Credits](https://github.com/dmrokan/soyutnet/blob/main/docs/source/credits.rst)
