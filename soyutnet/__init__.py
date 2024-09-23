@@ -1,8 +1,9 @@
 import sys
+import os
 import asyncio
 import signal
 import functools
-from typing import Any, Type
+from typing import Any, Type, Coroutine, TextIO
 
 from .constants import *
 from .registry import PTRegistry, TokenRegistry
@@ -46,14 +47,16 @@ def terminate() -> None:
     _cancel_all_tasks()
 
 
-async def main(pt_registry: PTRegistry) -> None:
+async def main(
+    pt_registry: PTRegistry, extra_routines: list[Coroutine[Any, Any, None]] = []
+) -> None:
     """
     Main entry point of PT net simulation.
 
     Runs the tasks assigned to places and transitions registered in ``pt_registry``.
 
     :param pt_registry: Registry object keeping all places and transitions in the model.
-    :param debug_level: Set debug level to ``"ERROR", "DEBUG"`` or ``"INFO"``.
+    :param extra_routines: Asyncio task functions to be run additional to the PT net loops.
     """
     tasks: set[asyncio.Task[PTCommon]] = set()
 
@@ -63,7 +66,20 @@ async def main(pt_registry: PTRegistry) -> None:
         tasks.add(task)
         task.add_done_callback(tasks.discard)
 
+    for r in extra_routines:
+        task = asyncio.create_task(r)
+        tasks.add(task)
+        task.add_done_callback(tasks.discard)
+
     await asyncio.gather(*tasks, return_exceptions=False)
+
+
+def run(*args: Any, ignore_cancelled_exception: bool = True, **kwargs: Any) -> None:
+    try:
+        asyncio.run(main(*args, **kwargs))
+    except asyncio.exceptions.CancelledError as e:
+        if not ignore_cancelled_exception:
+            raise asyncio.exceptions.CancelledError(e)
 
 
 class SoyutNet(object):
@@ -75,6 +91,34 @@ class SoyutNet(object):
         """if set, :py:func:`soyutnet.SoyutNet.DEBUG_V` will print."""
         self.SLOW_MOTION: bool = False
         """If set, task loops are delayed for :py:attr:`soyutnet.SoyutNet.LOOP_DELAY` seconds"""
+        self.FLOAT_DECIMAL_PLACE_FORMAT: int = 6
+        """Number of decimal places of floats in debug prints"""
+
+    def _print(
+        self,
+        *args: Any,
+        file: TextIO = sys.stdout,
+        depth: int = 0,
+        separator: str = " ",
+    ) -> None:
+        for a in args:
+            match a:
+                case tuple():
+                    file.write("(")
+                    self._print(*a, file=file, depth=depth + 1, separator=", ")
+                    file.write(")")
+                case list():
+                    file.write("[")
+                    self._print(*a, file=file, depth=depth + 1, separator=", ")
+                    file.write("]" + os.linesep)
+                case float():
+                    file.write(f"{a:.{self.FLOAT_DECIMAL_PLACE_FORMAT}f}")
+                case _:
+                    file.write(str(a))
+            file.write(separator)
+
+        if depth == 0:
+            file.write(os.linesep)
 
     @property
     def LOOP_DELAY(self) -> float:
@@ -86,6 +130,10 @@ class SoyutNet(object):
         if self.SLOW_MOTION:
             return self._LOOP_DELAY
         return 0
+
+    @LOOP_DELAY.setter
+    def LOOP_DELAY(self, amount: float) -> None:
+        self._LOOP_DELAY = amount
 
     async def sleep(self, amount: float = 0.0) -> None:
         """
@@ -125,27 +173,27 @@ class SoyutNet(object):
         Print debug messages when :py:attr:`soyutnet.SoyutNet.VERBOSE_ENABLED`.
         """
         if self.DEBUG_ENABLED and self.VERBOSE_ENABLED:
-            print(f"{self.get_loop_name()}:", *args)
+            self._print(f"{self.get_loop_name()}:", *args)
 
     def ERROR_V(self, *args: Any) -> None:
         """
         Print error messages when :py:attr:`soyutnet.SoyutNet.VERBOSE_ENABLED`.
         """
         if self.VERBOSE_ENABLED:
-            print(f"{self.get_loop_name()}:", *args, file=sys.stderr)
+            self._print(f"{self.get_loop_name()}:", *args, file=sys.stderr)
 
     def DEBUG(self, *args: Any) -> None:
         """
         Print debug messages when :py:attr:`soyutnet.SoyutNet.DEBUG_ENABLED`.
         """
         if self.DEBUG_ENABLED:
-            print(f"{self.get_loop_name()}:", *args)
+            self._print(f"{self.get_loop_name()}:", *args)
 
     def ERROR(self, *args: Any) -> None:
         """
         Print error messages.
         """
-        print(f"{self.get_loop_name()}:", *args, file=sys.stderr)
+        self._print(f"{self.get_loop_name()}:", *args, file=sys.stderr)
 
     def Arc(self, *args: Any, **kwargs: Any) -> Arc:
         kwargs["net"] = self
@@ -182,3 +230,6 @@ class SoyutNet(object):
     def PTRegistry(self, *args: Any, **kwargs: Any) -> PTRegistry:
         kwargs["net"] = self
         return PTRegistry(*args, **kwargs)
+
+    def print(self, *args: Any, **kwargs: Any) -> None:
+        self._print(*args, **kwargs)

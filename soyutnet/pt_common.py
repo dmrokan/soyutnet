@@ -54,8 +54,9 @@ class Arc(object):
         """Index in the list of output arcs of :py:attr:`soyutnet.pt_common.Arc.end`"""
         self.weight: int = weight
         """Arc weight"""
-        self.labels: list[label_t] = list(labels)
+        self._labels: list[label_t] = list(labels)
         """The list of arc labels"""
+        self._last_processed_label_index: int = 0
         self._queue: Queue = Queue(maxsize=weight)
         """Input/output queue for transmitting tokens from :py:attr:`soyutnet.pt_common.Arc.start` to :py:attr:`soyutnet.pt_common.Arc.end`"""
 
@@ -75,7 +76,7 @@ class Arc(object):
             end_ident = end_ref.ident()
         return (
             f"{start_ident}:{self.index_at_start} -> {end_ident}:{self.index_at_end}, "
-            f"l={self.labels}, w={self.weight}"
+            f"l={{{self._labels}}}, w={self.weight}"
         )
 
     async def wait(self) -> AsyncGenerator[TokenType, None]:
@@ -126,13 +127,50 @@ class Arc(object):
         if start_ref is not None:
             await start_ref._observer.inc_token_count(label, increment)
 
-    def get_graphviz_definition(self, t: int) -> str:
+    def get_graphviz_definition(
+        self, t: int = 0, label_names: Dict[int, str] = {}
+    ) -> str:
+        """
+        Generates graphviv DOT formated edge definition for the arc.
+
+        :param t: Event index for clustering multiple steps of PT net simulation.
+        :return: Edge definition.
+        """
         start_ref: Any = self.start()
         end_ref: Any = self.end()
         if end_ref is not None and start_ref is not None:
-            return f"""{start_ref._name}_{t} -> {end_ref._name}_{t} [fontsize="20",label=" {self.weight}",minlen="2",penwidth="3"];"""
+            labels_: list[str] = []
+            for l in self._labels:
+                if (
+                    l == GENERIC_LABEL
+                    and l not in label_names
+                    and len(self._labels) == 1
+                ):
+                    continue
+                labels_.append(str(l) if l not in label_names else label_names[l])
+            label_str: str = (
+                "{" + ",".join([str(l) for l in labels_]) + "}" if labels_ else ""
+            )
+            arc_label: str = (
+                str(self.weight) + " " if self.weight > 1 else ""
+            ) + label_str
+            return f"""{start_ref._name}_{t} -> {end_ref._name}_{t} [fontsize="20",label="{arc_label.strip()}",minlen="2",penwidth="3"];"""
 
         return ""
+
+    def labels(
+        self, remember_last_processed: bool = False
+    ) -> Generator[label_t, None, None]:
+        count: int = len(self._labels)
+        i: int = 0
+        while i < count:
+            j: int = self._last_processed_label_index if remember_last_processed else i
+            i += 1
+            if remember_last_processed:
+                self._last_processed_label_index += 1
+                if self._last_processed_label_index >= count:
+                    self._last_processed_label_index = 0
+            yield self._labels[j]
 
 
 class PTCommon(Token):
@@ -169,8 +207,6 @@ class PTCommon(Token):
         """Keeps tokens"""
         self._observer: Observer | None = None
         """Observes the tokens before each firing of output transitions"""
-        self._ident: str = self.ident()
-        """Unique identifier"""
         self._processor: Callable[["PTCommon"], Awaitable[bool]] | None = processor
         """Custom token processing function that is called between processing input and output arcs"""
 
@@ -248,11 +284,12 @@ class PTCommon(Token):
         count: int = len(self._input_arcs)
         i: int = 0
         while i < count:
-            yield self._input_arcs[self._last_processed_input_arc_index]
+            j: int = self._last_processed_input_arc_index
             self._last_processed_input_arc_index += 1
             if self._last_processed_input_arc_index == count:
                 self._last_processed_input_arc_index = 0
             i += 1
+            yield self._input_arcs[j]
 
     async def _get_output_arcs(self) -> AsyncGenerator[Arc, None]:
         """
@@ -263,11 +300,12 @@ class PTCommon(Token):
         count: int = len(self._output_arcs)
         i: int = 0
         while i < count:
-            yield self._output_arcs[self._last_processed_output_arc_index]
+            j: int = self._last_processed_output_arc_index
             self._last_processed_output_arc_index += 1
             if self._last_processed_output_arc_index == count:
                 self._last_processed_output_arc_index = 0
             i += 1
+            yield self._output_arcs[j]
 
     async def _process_input_arcs(self) -> bool:
         """
@@ -275,7 +313,7 @@ class PTCommon(Token):
 
         :return: If ``True`` proceeds to processing tokens and output arcs, else continues waiting for enabled arcs.
         """
-        self.net.DEBUG_V(f"{self._ident}: process_input_arcs")
+        self.net.DEBUG_V(f"{self.ident()}: process_input_arcs")
         async for arc in self._get_input_arcs():
             if not arc.is_enabled():
                 self.net.DEBUG_V(f"Not enabled {arc}")
@@ -292,10 +330,12 @@ class PTCommon(Token):
         """
         Sends tokens to the output PTs.
         """
-        self.net.DEBUG_V(f"{self._ident}: process_output_arcs")
+        self.net.DEBUG_V(f"{self.ident()}: process_output_arcs")
         async for arc in self._get_output_arcs():
+            if arc.is_enabled():
+                continue
             token: TokenType = tuple()
-            for label in arc.labels:
+            for label in arc.labels(remember_last_processed=True):
                 token = self._get_token(label)
                 if token:
                     break
@@ -311,7 +351,7 @@ class PTCommon(Token):
 
         :return: ``True`` by default, else goes back to :py:func:`soyutnet.pt_common.PTCommon._process_input_arcs`.
         """
-        self.net.DEBUG_V(f"{self._ident}: process_tokens")
+        self.net.DEBUG_V(f"{self.ident()}: process_tokens")
         if self._processor is None:
             return True
 
@@ -371,12 +411,12 @@ class PTCommon(Token):
         other._input_arcs.append(arc)
         arc.index_at_start = len(self._output_arcs) - 1
         arc.index_at_end = len(other._input_arcs) - 1
-        for label in arc.labels:
+        for label in arc.labels():
             if label not in self._tokens:
                 self._tokens[label] = []
             if label not in other._tokens:
                 other._tokens[label] = []
-        self.net.DEBUG_V(f"{self._ident}: Connected arc: {str(arc)}")
+        self.net.DEBUG_V(f"{self.ident()}: Connected arc: {str(arc)}")
 
         return other
 

@@ -1,5 +1,8 @@
+Examples
+========
+
 Producer/consumer
-=================
+-----------------
 
 This example implements the simplest producer/consumer network. One end produces
 tokens which enables the transition that transfers the token to the consumer. Both producer
@@ -14,60 +17,18 @@ and consumer are instances of :py:class:`soyutnet.place.SpecialPlace` class.
 It is implemented by the code below which can be found at
 `SoyutNet repo <https://github.com/dmrokan/soyutnet/blob/main/tests/simple_example.py>`__.
 
-.. code:: python
-
-    def main():
-        token_ids = list(range(1, 7))
-
-        async def producer(place):
-            try:
-                id: id_t = token_ids.pop(0)
-                token = (GENERIC_LABEL, id)
-                print("Produced:", token)
-                return token
-            except IndexError:
-                pass
-
-            return tuple()
-
-        async def consumer(place):
-            token = place.get_token(GENERIC_LABEL)
-            if token:
-                print("Consumed:", token)
-            else:
-                print("No token in consumer")
-
-
+.. literalinclude:: ../../tests/simple_example.py
+   :language: python
+   :lines: 8-28
+   :lineno-start: 8
 
 The main function starts by defining token IDs of produced token. The producer
 function is called by :math:`p_1` and the consumer is called by :math:`p_2`.
 
-.. code:: python
-
-    place_count = 2
-
-    def on_comparison_ends(observer):
-        nonlocal place_count
-        place_count -= 1
-        if place_count == 0:
-            soyutnet.terminate()
-
-    net = SoyutNet()
-
-    o1 = net.ComparativeObserver(
-        expected={1: [((GENERIC_LABEL, 1),)] * 5},
-        on_comparison_ends=on_comparison_ends,
-        verbose=False,
-    )
-    o2 = net.ComparativeObserver(
-        expected={1: [((GENERIC_LABEL, i),) for i in range(0, 6)]},
-        on_comparison_ends=on_comparison_ends,
-        verbose=False,
-    )
-    p1 = net.SpecialPlace("p1", producer=producer, observer=o1)
-    p2 = net.SpecialPlace("p2", consumer=consumer, observer=o2)
-    t1 = net.Transition("t1")
-
+.. literalinclude:: ../../tests/simple_example.py
+   :language: python
+   :lines: 29-52
+   :lineno-start: 29
 
 SoyutNet implements observers (:py:class:`soyutnet.observer.Observer`) for
 keeping the record of PT net markings before each firing of a transition.
@@ -93,21 +54,10 @@ for test purposes. It accepts two additional arguments
 The token count in :math:`p_1` is observed before each firing of :math:`t_1`
 and compared to the list. If a value does not match, it raises a ``RuntimeError``.
 
-.. code:: python
-
-    reg = net.PTRegistry()
-
-    reg.register(p1)
-    reg.register(p2)
-    reg.register(t1)
-
-    p1.connect(t1).connect(p2)
-
-    try:
-        asyncio.run(soyutnet.main(reg))
-    except asyncio.exceptions.CancelledError:
-        print("Simulation is terminated.")
-
+.. literalinclude:: ../../tests/simple_example.py
+   :language: python
+   :lines: 53-63
+   :lineno-start: 53
 
 :math:`p_1`'s output is connected to :math:`t_1` and :math:`t_1`'s output is
 connected to :math:`p_2`.
@@ -135,7 +85,7 @@ The registry keeps a list of places and transitions and it is provided to the
 
 
 n-tester
-========
+--------
 
 This example implements an *n-tester* transition which is enabled when input place
 has :math:`n` or more tokens.
@@ -149,64 +99,8 @@ has :math:`n` or more tokens.
 It is implemented by the code below which can be found at
 `SoyutNet repo <https://github.com/dmrokan/soyutnet/blob/main/tests/n_tester.py>`__.
 
-.. code:: python
-
-    import sys
-    import asyncio
-
-    import soyutnet
-    from soyutnet import SoyutNet
-    from soyutnet.constants import GENERIC_ID, GENERIC_LABEL, TokenType
-
-
-    def n_tester(n=2):
-        net = SoyutNet()
-
-        consumed_count = n + 1
-
-        async def consumer(place):
-            nonlocal consumed_count
-            token: TokenType = place.get_token(GENERIC_LABEL)
-            if token:
-                net.DEBUG("Consumed:", token)
-                consumed_count -= 1
-                if consumed_count == 0:
-                    soyutnet.terminate()
-
-        o1 = net.ComparativeObserver(
-            expected={1: [((GENERIC_LABEL, i),) for i in range(2 * n, n - 1, -1)]},
-            verbose=True,
-        )
-        p1 = net.Place(
-            "p1", initial_tokens={GENERIC_LABEL: [GENERIC_ID] * (2 * n)}, observer=o1
-        )
-        t1 = net.Transition()
-        p2 = net.SpecialPlace("p2", consumer=consumer)
-
-        reg = net.PTRegistry()
-        reg.register(p1)
-        reg.register(t1)
-        reg.register(p2)
-
-        p1.connect(t1, weight=n).connect(p2, weight=1)
-        t1.connect(p1, weight=n - 1)
-
-        try:
-            asyncio.run(soyutnet.main(reg))
-        except asyncio.exceptions.CancelledError:
-            print("Simulation is terminated.")
-            pass
-
-        # Generate graphviz dot file.
-        gv = reg.generate_graph()
-        return gv
-
-    if __name__ == "__main__":
-        gv = n_tester(int(sys.argv[1]) + 1)
-        with open("test.gv", "w") as fh:
-            fh.write(gv)
-
-
+.. literalinclude:: ../../tests/n_tester.py
+   :language: python
 
 **Usage**
 
@@ -214,3 +108,59 @@ It is implemented by the code below which can be found at
 
     $ python3 tests/n_tester.py 9
     $ dot -Tpng test.gv > n_tester_example.png # Generate image from graphviz dot file
+
+
+Periodic
+--------
+
+This example implements two transitions that fires at adjustable periods.
+
+.. figure:: _static/images/periodic_example.png
+   :align: center
+   :alt: n-tester example
+
+   n-tester example
+
+It is implemented by the code below which can be found at
+`SoyutNet repo <https://github.com/dmrokan/soyutnet/blob/main/tests/periodic_example.py>`__.
+
+.. literalinclude:: ../../tests/periodic_example.py
+   :language: python
+
+**Usage**
+
+It can be seen that ``t2`` fires more frequently than ``t1``
+which can be adjusted by the second argument of Python script.
+
+.. code:: bash
+
+    $ python3 tests/periodic_example.py 2
+    ('p1', (191030.211397, ((0, 2),), 't1'))
+    ('p2', (191030.211567, ((0, 2),), 't2'))
+    ('p2', (191030.211661, ((0, 1),), 't2'))
+    ('p1', (191030.211747, ((0, 2),), 't1'))
+    ('p2', (191030.211865, ((0, 2),), 't2'))
+    ('p2', (191030.211957, ((0, 1),), 't2'))
+    ('p1', (191030.212038, ((0, 2),), 't1'))
+    ('p2', (191030.212158, ((0, 2),), 't2'))
+    ('p2', (191030.212239, ((0, 1),), 't2'))
+    ('p1', (191030.212318, ((0, 2),), 't1'))
+    ('p2', (191030.212428, ((0, 2),), 't2'))
+
+    $ python3 tests/periodic_example.py 3 test.gv
+    ('p1', (190774.824447, ((0, 3),), 't1'))
+    ('p2', (190774.824606, ((0, 3),), 't2'))
+    ('p2', (190774.824707, ((0, 2),), 't2'))
+    ('p2', (190774.824793, ((0, 1),), 't2'))
+    ('p1', (190774.824881, ((0, 3),), 't1'))
+    ('p2', (190774.825015, ((0, 3),), 't2'))
+    ('p2', (190774.825109, ((0, 2),), 't2'))
+    ('p2', (190774.825191, ((0, 1),), 't2'))
+    ('p1', (190774.825274, ((0, 3),), 't1'))
+    ('p2', (190774.825398, ((0, 3),), 't2'))
+    ('p2', (190774.825487, ((0, 2),), 't2'))
+    ('p2', (190774.825568, ((0, 1),), 't2'))
+    ('p1', (190774.825649, ((0, 3),), 't1'))
+    ('p2', (190774.825774, ((0, 3),), 't2'))
+
+    $ dot -Tpng test.gv > periodic_example.png

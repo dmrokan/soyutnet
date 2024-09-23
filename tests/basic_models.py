@@ -12,11 +12,11 @@ def co_begin(action_count):
     async def producer(place):
         try:
             id: id_t = token_ids.pop(0)
-            return (GENERIC_LABEL, id)
+            return [(GENERIC_LABEL, id)]
         except IndexError:
             pass
 
-        return tuple()
+        return []
 
     output_token_ids = list(token_ids)
 
@@ -51,10 +51,7 @@ def co_begin(action_count):
         reg.register(p3i)
         t2.connect(p3i)
 
-    try:
-        asyncio.run(soyutnet.main(reg))
-    except asyncio.exceptions.CancelledError:
-        print("Simulation is terminated.")
+    soyutnet.run(reg)
 
 
 def co_end(action_count):
@@ -62,11 +59,11 @@ def co_end(action_count):
         net.DEBUG(f"{place.ident()}")
         place_id = place.ident().split(",")[0].split("_")[1]
         try:
-            return (GENERIC_LABEL, int(place_id))
+            return [(GENERIC_LABEL, int(place_id))]
         except IndexError:
             pass
 
-        return tuple()
+        return []
 
     output_token_ids = list(range(1, action_count + 1))
 
@@ -98,17 +95,17 @@ def co_end(action_count):
 
 
 def sync_by_signal():
-    token_ids = list(range(1, 11)) + [GENERIC_ID] * 20
+    token_ids = list(range(1, 11)) + [GENERIC_ID] * 30
 
     async def producer(place):
         try:
             id = token_ids.pop(0)
             net.DEBUG(f"Produced '{(GENERIC_LABEL, id)}'")
-            return (GENERIC_LABEL, id)
+            return [(GENERIC_LABEL, id)]
         except IndexError:
             pass
 
-        return tuple()
+        return []
 
     output_token_ids = token_ids[:10]
 
@@ -177,7 +174,7 @@ def feedback(N=1):
             label = GENERIC_LABEL
         token = (label, id)
         DEBUG(f"Produced {token}")
-        return token
+        return [token]
 
     consumed_ids = list(token_ids)
 

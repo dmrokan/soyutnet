@@ -48,7 +48,7 @@ Changelog = "https://github.com/dmrokan/soyutnet/blob/main/CHANGELOG.md"
 
 [tool.black]
 line-length = 88
-target-version = ['py38']
+target-version = ['py310']
 include = 'soyutnet\/.*\.pyi?$|tests\/.*\.pyi?$'
 
 [tool.mypy]

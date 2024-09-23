@@ -49,10 +49,6 @@ def n_tester(n=2):
 
 
 if __name__ == "__main__":
-    # co_begin(int(sys.argv[1]))
-    # co_end(int(sys.argv[1]))
-    # gv = sync_by_signal()
-    # feedback(int(sys.argv[1]))
     gv = n_tester(int(sys.argv[1]) + 1)
     with open("test.gv", "w") as fh:
         fh.write(gv)

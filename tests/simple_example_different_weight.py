@@ -12,11 +12,11 @@ def main_01(w1=1, w2=1):
     async def producer(place):
         try:
             id: id_t = token_ids.pop(0)
-            return (GENERIC_LABEL, id)
+            return [(GENERIC_LABEL, id)]
         except IndexError:
             pass
 
-        return tuple()
+        return []
 
     async def consumer(place):
         return

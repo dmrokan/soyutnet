@@ -88,3 +88,34 @@ def test_11():
     from n_tester import n_tester
 
     n_tester()
+
+
+def test_12():
+    import hashlib
+    from readme_example import main
+
+    records, graph = main()
+    assert (
+        hashlib.sha256(graph.encode("utf-8")).hexdigest()
+        == "f66957886ed63ee512bbcfad0666501313fcd0e09f6b6a632b4def2b6675037e"
+    )
+    assert len(records) == 3
+    assert records[0][0] == "p1"
+    assert records[0][1][1:] == (((0, 1), (1, 2)), "t1")
+    assert records[1][0] == "p1"
+    assert records[1][1][1:] == (((0, 0), (1, 2)), "t1")
+    assert records[2][0] == "p1"
+    assert records[2][1][1:] == (((0, 0), (1, 1)), "t1")
+
+
+def test_13():
+    import hashlib
+    from periodic_example import main
+
+    for i in range(1, 100, 4):
+        records = main(i)
+        j = 0
+        for rec in records:
+            n = rec[0]
+            assert (j % (i + 1) == 0 and n == "p1") or (j % (i + 1) != 0 and n == "p2")
+            j += 1

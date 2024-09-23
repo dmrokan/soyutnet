@@ -13,11 +13,11 @@ def main():
             id: id_t = token_ids.pop(0)
             token = (GENERIC_LABEL, id)
             print("Produced:", token)
-            return token
+            return [token]
         except IndexError:
             pass
 
-        return tuple()
+        return []
 
     async def consumer(place):
         token = place.get_token(GENERIC_LABEL)
@@ -58,10 +58,8 @@ def main():
 
     p1.connect(t1).connect(p2)
 
-    try:
-        asyncio.run(soyutnet.main(reg))
-    except asyncio.exceptions.CancelledError:
-        print("Simulation is terminated.")
+    soyutnet.run(reg)
+    print("Simulation is terminated.")
 
     records = reg.get_merged_records()
     for r in records:

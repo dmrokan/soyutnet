@@ -33,13 +33,16 @@ class Place(PTCommon):
         :param observer_verbose: If set, observer will print new records when saved.
         """
         super().__init__(name=name, **kwargs)
-        self._observer: Observer = (
-            Observer(observer_record_limit, verbose=observer_verbose, net=kwargs["net"])
-            if observer is None
-            else observer
-        )
-        if not self._observer._ident:
-            self._observer._ident = self.ident()
+        self._observer: Observer
+        if observer is not None:
+            self._observer = observer
+        else:
+            self._observer = Observer(
+                observer_record_limit,
+                verbose=observer_verbose,
+                net=kwargs["net"],
+            )
+        self._observer._set_place(self)
 
     async def _observe(self, requester: str = "") -> None:
         """
@@ -61,7 +64,7 @@ class SpecialPlace(Place):
         self,
         name: str = "",
         consumer: Callable[["SpecialPlace"], Awaitable[bool]] | None = None,
-        producer: Callable[["SpecialPlace"], Awaitable[TokenType]] | None = None,
+        producer: Callable[["SpecialPlace"], Awaitable[list[TokenType]]] | None = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -74,38 +77,40 @@ class SpecialPlace(Place):
         super().__init__(name=name, **kwargs)
         self._consumer: Callable[["SpecialPlace"], Awaitable[bool]] | None = consumer
         """Custom :py:func:`soyutnet.pt_common.PTCommon._process_input_arcs` function."""
-        self._producer: Callable[["SpecialPlace"], Awaitable[TokenType]] | None = (
-            producer
-        )
+        self._producer: (
+            Callable[["SpecialPlace"], Awaitable[list[TokenType]]] | None
+        ) = producer
         """Custom :py:func:`soyutnet.pt_common.PTCommon._process_output_arcs` function."""
 
     async def _process_input_arcs(self) -> bool:
         """
-        Calls custom producer function. If it is ``None`` calls :py:func:`soyutnet.pt_common.PTCommon._process_input_arcs` function.
+        Calls custom producer function after the default
+        :py:func:`soyutnet.pt_common.PTCommon._process_input_arcs`.
 
-        :return: If ``True`` continues to processing tokens and output arc, else loops back to processing input arcs.
+        :return: If ``True`` continues to processing tokens and output arcs, else loops back to processing input arcs.
         """
+        result: bool = await super()._process_input_arcs()
         if self._producer is not None:
-            token: TokenType = await self._producer(self)
-            if not token:
-                return False
+            tokens: list[TokenType] = await self._producer(self)
+            if tokens:
+                for token in tokens:
+                    label: label_t = token[0]
+                    count: int = self._put_token(token, strict=False)
+                    if self._observer is not None:
+                        await self._observer.inc_token_count(label)
 
-            label: label_t = token[0]
-            count: int = self._put_token(token, strict=False)
-            if self._observer is not None:
-                await self._observer.inc_token_count(token[0])
+                return True
 
-            return True
-        else:
-            return await super()._process_input_arcs()
+        return result
 
     async def _process_output_arcs(self) -> None:
         """
-        Null process output arcs function, when a custom consumer is defined.
+        Handles consumer function first, if it is defined.
+
+        See, :py:func:`soyutnet.place.Place._process_output_arcs`.
         """
         if self._consumer is not None:
             await self._consumer(self)
-            return
 
         await super()._process_output_arcs()
 
@@ -117,10 +122,6 @@ class SpecialPlace(Place):
             return False
 
         if self._observer is not None:
-            """Emulate how it will behave when tokens are sent over an input arc with weight=1."""
-            token_count_in_arc = 0
-            if self._producer is not None:
-                token_count_in_arc = 1
             await self._observe(self._name)
 
         return True

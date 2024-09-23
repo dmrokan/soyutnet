@@ -33,6 +33,8 @@ class Transition(PTCommon):
         """Keeps timestampts of each firing of the transition: py:attr:`soyutnet.transition.FiringRecordType`"""
         self._record_firing: bool = record_firing
         """Enables recording firings of transitions"""
+        self._notifier: asyncio.Condition = asyncio.Condition()
+        """Firing notifier"""
 
     def _new_firing_record(self) -> None:
         self._firing_records.append((self.net.time(),))
@@ -43,7 +45,7 @@ class Transition(PTCommon):
 
         :return: ``True`` if the transition is enabled, else goes back to waiting input arcs to be enabled.
         """
-        self.net.DEBUG_V(f"{self._ident}: process_input_arcs")
+        self.net.DEBUG_V(f"{self.ident()}: process_input_arcs")
         async for arc in self._get_input_arcs():
             if not arc.is_enabled():
                 return False
@@ -64,15 +66,10 @@ class Transition(PTCommon):
                 if count <= 0:
                     break
 
+        async with self._notifier:
+            self._notifier.notify_all()
+
         return True
-
-    async def _process_tokens(self) -> bool:
-        """
-        Calls ``super()``'s version.
-
-        See, :py:func:`soyutnet.pt_common.PTCommon._process_tokens`.
-        """
-        return await super()._process_tokens()
 
     async def _process_output_arcs(self) -> None:
         """
@@ -82,12 +79,12 @@ class Transition(PTCommon):
 
         Sends tokens to the output places when required conditions are satisfied.
         """
-        self.net.DEBUG_V(f"{self._ident}: process_output_arcs")
+        self.net.DEBUG_V(f"{self.ident()}: process_output_arcs")
         async for arc in self._get_output_arcs():
             count: int = arc.weight
             while count > 0:
                 token: TokenType = tuple()
-                for label in arc.labels:
+                for label in arc.labels(remember_last_processed=True):
                     token = self._get_token(label)
                     if token:
                         break
@@ -112,3 +109,9 @@ class Transition(PTCommon):
         :return: Firing records.
         """
         return self._firing_records
+
+    async def wait_for_firing(self) -> bool:
+        async with self._notifier:
+            await self._notifier.wait()
+
+        return True

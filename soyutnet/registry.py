@@ -146,7 +146,6 @@ class TokenRegistry(Registry):
         """
 
         def callback(new_id: id_t, tkn: Any) -> None:
-
             tkn._id = new_id
 
         return super().register(token, callback)
@@ -215,7 +214,7 @@ class PTRegistry(Registry):
             for record in obsv.get_records():
                 output.append((name, record))
 
-        return output
+        return sorted(output, key=lambda rec: rec[1][0])
 
     def _get_graphviz_node_definition(self, pt: PTCommon, t: int) -> str:
         shape: str = "circle"
@@ -225,14 +224,17 @@ class PTRegistry(Registry):
         width: float = 1
         fontsize: int = 20
         penwidth: int = 3
+        style: str = "filled"
         if isinstance(pt, Transition):
             shape = "box"
             color = "#cccccc"
             fillcolor = "#000000"
             height = 0.25
             width = 1.25
+        elif isinstance(pt, SpecialPlace):
+            fillcolor = "#777777"
         node_fmt: str = (
-            """{}_{} [shape="{}",fontsize="{}",style="filled",color="{}",fillcolor="{}",label="",xlabel="{}",height="{}",width="{}",penwidth={}];"""
+            """{}_{} [shape="{}",fontsize="{}",style="{}",color="{}",fillcolor="{}",label="",xlabel="{}",height="{}",width="{}",penwidth={}];"""
         )
 
         return node_fmt.format(
@@ -240,6 +242,7 @@ class PTRegistry(Registry):
             t,
             shape,
             fontsize,
+            style,
             color,
             fillcolor,
             pt._name,
@@ -248,7 +251,12 @@ class PTRegistry(Registry):
             penwidth,
         )
 
-    def generate_graph(self, net_name: str = "Net", indent: str = "\t") -> str:
+    def generate_graph(
+        self,
+        net_name: str = "Net",
+        indent: str = "\t",
+        label_names: Dict[int, str] = {},
+    ) -> str:
         eol: str = os.linesep
         gv: str = f"digraph {net_name} {{" + eol
         gv_nodes: str = ""
@@ -260,10 +268,13 @@ class PTRegistry(Registry):
             node_def: str = self._get_graphviz_node_definition(obj, 0)
             gv_nodes += 2 * indent + node_def + eol
             for arc in obj._input_arcs:
-                gv_arcs += 2 * indent + arc.get_graphviz_definition(0) + eol
+                gv_arcs += (
+                    2 * indent
+                    + arc.get_graphviz_definition(t=0, label_names=label_names)
+                    + eol
+                )
 
         gv += indent + "subgraph cluster_0 {" + eol
-        gv += 2 * indent + "penwidth=3;" + eol
         gv += gv_nodes
         gv += gv_arcs
         gv += indent + "}" + eol

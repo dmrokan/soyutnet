@@ -12,11 +12,11 @@ def main(w1=1, w2=1):
     async def producer(place):
         try:
             id: id_t = token_ids.pop(0)
-            return (GENERIC_LABEL, id)
+            return [(GENERIC_LABEL, id)]
         except IndexError:
             pass
 
-        return tuple()
+        return []
 
     async def consumer(place):
         return
@@ -37,12 +37,12 @@ def main(w1=1, w2=1):
     o00 = net.Observer(verbose=False)
     o01 = net.Observer(verbose=False)
     o10 = net.ComparativeObserver(
-        expected={1: [((GENERIC_LABEL, 3),)] * 3},
+        expected={1: [((GENERIC_LABEL, 3),)] * 5},
         on_comparison_ends=on_comparison_ends,
         verbose=False,
     )
     o11 = net.ComparativeObserver(
-        expected={1: [((GENERIC_LABEL, 3),)] * 3},
+        expected={1: [((GENERIC_LABEL, i),) for i in range(3, 8)]},
         on_comparison_ends=on_comparison_ends,
         verbose=False,
     )

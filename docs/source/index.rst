@@ -250,52 +250,21 @@ Example code
 
 The code below implements the `first example`_.
 
-.. code:: python
-
-    import sys
-    import asyncio
-
-    import soyutnet
-    from soyutnet import SoyutNet
-    from soyutnet.constants import GENERIC_ID, GENERIC_LABEL
-
-
-    def main(do_not_run=False):
-        net = SoyutNet()
-
-        reg = net.PTRegistry()
-        p1 = net.Place("p1", initial_tokens={ GENERIC_LABEL: [GENERIC_ID] })
-        p2 = net.Place("p2")
-        t1 = net.Transition("t1")
-
-        p1.connect(t1).connect(p2)
-
-        reg.register(p1)
-        reg.register(p2)
-        reg.register(t1)
-
-        if do_not_run:
-            print(reg.generate_graph())
-            return
-
-        asyncio.run(soyutnet.main(reg))
-
-    if __name__ == "__main__":
-        main(int(sys.argv[1]) > 0 if len(sys.argv) > 1 else False)
+.. literalinclude:: ../../tests/readme_example.py
+   :language: python
 
 .. code:: bash
 
     $ python3 first_example.py 1 # Generates the Graphviz dot file below.
     digraph Net {
-        subgraph cluster_0 {
-            penwidth=3;
-            p1_0 [shape="circle",fontsize="20",style="filled",color="#000000",fillcolor="#dddddd",label="",xlabel="p1",height="1",width="1",penwidth=3];
-            p2_0 [shape="circle",fontsize="20",style="filled",color="#000000",fillcolor="#dddddd",label="",xlabel="p2",height="1",width="1",penwidth=3];
-            t1_0 [shape="box",fontsize="20",style="filled",color="#cccccc",fillcolor="#000000",label="",xlabel="t1",height="0.25",width="1.25",penwidth=3];
-            t1_0 -> p2_0 [fontsize="20",label=" 1",minlen="2",penwidth="3"];
-            p1_0 -> t1_0 [fontsize="20",label=" 1",minlen="2",penwidth="3"];
-        }
-        clusterrank=none;
+      subgraph cluster_0 {
+        p1_0 [shape="circle",fontsize="20",style="filled",color="#000000",fillcolor="#dddddd",label="",xlabel="p1",height="1",width="1",penwidth=3];
+        p2_0 [shape="circle",fontsize="20",style="filled",color="#000000",fillcolor="#dddddd",label="",xlabel="p2",height="1",width="1",penwidth=3];
+        t1_0 [shape="box",fontsize="20",style="filled",color="#cccccc",fillcolor="#000000",label="",xlabel="t1",height="0.25",width="1.25",penwidth=3];
+        t1_0 -> p2_0 [fontsize="20",label="{🤌,🤔}",minlen="2",penwidth="3"];
+        p1_0 -> t1_0 [fontsize="20",label="{🤌,🤔}",minlen="2",penwidth="3"];
+      }
+      clusterrank=none;
     }
 
     $ python3 first_example.py 1 | dot -Tpng > first_example.png # Generates the image below

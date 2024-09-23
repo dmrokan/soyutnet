@@ -1,18 +1,25 @@
 import asyncio
+from weakref import ref, ReferenceType
 from typing import (
     Any,
     Dict,
     Tuple,
     Callable,
+    TYPE_CHECKING,
 )
 
 from .constants import *
+
+if TYPE_CHECKING:
+    from .place import Place
+else:
+    Place = Any
 
 
 ObserverRecordType = Tuple[float, Tuple[TokenType, ...], str]
 """Observer records: (observation time, label, no of tokens with the label, identity of requester of the record)"""
 ObserverHistoryType = list[ObserverRecordType]
-"""Type for a list of :py:attr:`soyutnet.observer.ObserverHistoryType`"""
+"""Type for a list of :py:attr:`soyutnet.observer.ObserverRecordType`"""
 MergedRecordsType = list[Tuple[str, ObserverRecordType | Tuple[float]]]
 """A type for list of all records of all observers"""
 
@@ -26,7 +33,7 @@ class Observer(BaseObject):
         self,
         record_limit: int = 0,
         verbose: bool = False,
-        pt_ident: str = "",
+        place: Place | None = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -34,11 +41,11 @@ class Observer(BaseObject):
 
         :param record_limit: Maximum number of records to be kept. It is unlimited if chose ``0``.
         :param verbose: Print observations if ``True``.
-        :param pt_ident: Custom identification string that will be used in debug prints.
+        :param place: Reference to the :py:class:`soyutnet.place.Place` that is observed.
         """
         super().__init__(**kwargs)
         self._records: ObserverHistoryType = []
-        """Records of observations. :py:attr:`soyutnet.observer.ObserverRecordType`"""
+        """Records of observations. :py:attr:`soyutnet.observer.ObserverHistoryType`"""
         self._lock: asyncio.Lock = asyncio.Lock()
         """Async lock for safe access to records"""
         self._record_limit: int = record_limit
@@ -51,8 +58,13 @@ class Observer(BaseObject):
         self._verbose: bool = verbose
         """Prints the observations if ``True``"""
         self._token_counters: Dict[label_t, int] = {}
-        self._ident: str = pt_ident
-        """Identication string that will be used in debug prints"""
+        self._place: ReferenceType[Place] | None = None
+        """Weak reference to the :py:class:`soyutnet.place.Place` that is observed."""
+        self._set_place(place)
+
+    def _set_place(self, place: Place | None) -> None:
+        if place is not None:
+            self._place = ref(place)
 
     async def _clean_records(self) -> int:
         """
@@ -85,7 +97,7 @@ class Observer(BaseObject):
         """
         Print records to the stdout.
         """
-        output: str = f"{self._ident} has {len(self._records)} records\n"
+        output: str = f"{self.ident()} has {len(self._records)} records\n"
         for record in self._records:
             output += f"  {record}\n"
 
@@ -98,9 +110,19 @@ class Observer(BaseObject):
         :param record: Record.
         """
         if self._verbose:
-            self.net.DEBUG(f"REC: {self._ident}:", record)
+            self.net.DEBUG(f"REC: {self.ident()}:", record)
         self._add_record(record)
         await self._clean_records()
+
+    def ident(self) -> str:
+        if self._place is None:
+            return ""
+
+        place_ref = self._place()
+        if place_ref is not None:
+            return f"O{{{place_ref.ident()}}}"
+
+        return ""
 
     async def save(self, requester: str = "") -> None:
         """
@@ -200,7 +222,7 @@ class ComparativeObserver(Observer):
                 value: Any = self._expected[column][self._expected_index]
                 if record[column] != value:
                     raise RuntimeError(
-                        f"{self._ident}: actual ({column}, {record[column]}) =/= expected ({column}, {value})"
+                        f"{self.ident()}: actual ({column}, {record[column]}) =/= expected ({column}, {value})"
                     )
                 else:
                     self.net.DEBUG_V(
@@ -220,5 +242,5 @@ class ComparativeObserver(Observer):
                     self._on_comparison_ends(self)
 
         if self._verbose:
-            self.net.DEBUG(f"REC: {self._ident}:", record)
+            self.net.DEBUG(f"REC: {self.ident()}:", record)
         self._add_record(record)
