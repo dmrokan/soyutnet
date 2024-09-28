@@ -14,7 +14,7 @@ authors = [
 maintainers = [
   {name = "Okan Demir", email = "okndemir@gmail.com"}
 ]
-description = "Place/transition net (petri net) simulator that uses asyncio utilities as its backend"
+description = "Place/transition net (petri net) simulator that uses asyncio utilities as backend"
 readme = "README.md"
 license = {file = "LICENSE.md"}
 keywords = ["pt-net", "simulator", "petri-net", "discrete-event-systems"]

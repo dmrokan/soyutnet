@@ -154,7 +154,7 @@ class SoyutNet(object):
 
     def get_loop_name(self) -> str:
         """
-        Get the name of current loop from which this function is called.
+        Get the name of current loop which this function is called from.
 
         :return: Name of the loop.
         """

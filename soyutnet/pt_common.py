@@ -124,7 +124,7 @@ class Arc(object):
 
     async def notify_observer(self, label: label_t, increment: int = -1) -> None:
         start_ref: Any = self.start()
-        if start_ref is not None:
+        if start_ref is not None and start_ref._observer is not None:
             await start_ref._observer.inc_token_count(label, increment)
 
     def get_graphviz_definition(

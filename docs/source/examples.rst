@@ -119,7 +119,7 @@ This example implements two transitions that fires at adjustable periods.
    :align: center
    :alt: n-tester example
 
-   n-tester example
+   Periodic example
 
 It is implemented by the code below which can be found at
 `SoyutNet repo <https://github.com/dmrokan/soyutnet/blob/main/tests/periodic_example.py>`__.

@@ -32,9 +32,7 @@ This example simulates the PT net given in the diagram below.
 ![PT net example](https://raw.githubusercontent.com/dmrokan/soyutnet/main/docs/source/_static/images/first_example_T0.png "PT net example")
 
 ```python
-if __name__ == "__main__":
-    main()
-    import sys
+import sys
 import asyncio
 
 import soyutnet

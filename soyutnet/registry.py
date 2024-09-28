@@ -193,9 +193,12 @@ class PTRegistry(Registry):
         return super().register(pt, callback)
 
     def get_merged_records(
-        self, ignore_special_places: bool = True
+        self,
+        ignore_special_places: bool = True,
+        place_names: list[str] = [],
     ) -> MergedRecordsType:
         """
+        TODO
         Merges all observer records and sorts by their timestamps.
 
         :return: Merged and sorted observer records.
@@ -208,6 +211,8 @@ class PTRegistry(Registry):
             if ignore_special_places and isinstance(obj, SpecialPlace):
                 continue
             name: str = obj._name
+            if place_names and name not in place_names:
+                continue
             if obj._observer is None:
                 continue
             obsv: Observer = obj._observer
@@ -255,7 +260,7 @@ class PTRegistry(Registry):
         self,
         net_name: str = "Net",
         indent: str = "\t",
-        label_names: Dict[int, str] = {},
+        label_names: Dict[label_t, str] = {},
     ) -> str:
         eol: str = os.linesep
         gv: str = f"digraph {net_name} {{" + eol

@@ -68,13 +68,13 @@ In the example above,
 * :math:`T=\{t_1\}`
 * :math:`A=\{a_1, a_2\}`
 * :math:`W=\{w(p_1, t_1)=1, w(t_1, p_2)=1\}`
-* :math:`M_0=\{p_1 \rightarrow 1, p_1 \rightarrow 0\}`
+* :math:`M_0=\{p_1 = 1, p_2 = 0\}`
 
 Functions :math:`w(p_i, t_j)` and :math:`w(t_i, p_j)` denotes the arc weights between
 transitions and places. After :math:`t_1` fires, marking changes and it becomes
 
 .. math::
-   M_1=\{p_1 \rightarrow 0, p_2 \rightarrow 1\}
+   M_1=\{p_1 = 0, p_2 = 1\}
 
 according to the rules below.
 
@@ -224,14 +224,14 @@ On the other hand, *SpecialPlace* class constructor accepts two extra optional a
 
 .. _producer:
 
-#. ``producer``: It is a callback function which is called to acquire tokens instead of the
+1. ``producer``: It is a callback function which is called to acquire tokens instead of the
    default ``_process_input_arcs`` (:py:func:`soyutnet.pt_common.PTCommon._process_input_arcs`).
    This function can be used to produce custom tokens by generating a label and ID. Then, it will
    be injected into the PT net's flow.
 
 .. _consumer:
 
-#. ``consumer``: This callback function is used instead of the default ``_process_output_arcs``
+2. ``consumer``: This callback function is used instead of the default ``_process_output_arcs``
    function (:py:func:`soyutnet.pt_common.PTCommon._process_output_arcs`) if it is provided.
    It can be used as an end point of PT net model. The tokens acquired by this function can be
    redirected to other utilities.
@@ -248,7 +248,8 @@ in several formats.
 Example code
 ^^^^^^^^^^^^
 
-The code below implements the `first example`_.
+The code below implements the `first example`_ but arcs have two labels in this case. It means
+:math:`t1` and :math:`p2` will accept tokens with both labels.
 
 .. literalinclude:: ../../tests/readme_example.py
    :language: python
@@ -306,6 +307,11 @@ Examples
    :maxdepth: 2
 
    examples
+
+Simulations
+-----------
+
+* `PI-controller <https://soyutnet.readthedocs.io/projects/simulations/en/latest/src.pi_controller.html>`__
 
 Modules
 -------

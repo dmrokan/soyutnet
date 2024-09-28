@@ -36,13 +36,7 @@ class Place(PTCommon):
         self._observer: Observer
         if observer is not None:
             self._observer = observer
-        else:
-            self._observer = Observer(
-                observer_record_limit,
-                verbose=observer_verbose,
-                net=kwargs["net"],
-            )
-        self._observer._set_place(self)
+            self._observer._set_place(self)
 
     async def _observe(self, requester: str = "") -> None:
         """
@@ -52,7 +46,8 @@ class Place(PTCommon):
 
         :param token_count_in_arc: Number of tokens in the output arc of places must also be added to the count.
         """
-        await self._observer.save(requester=requester)
+        if self._observer is not None:
+            await self._observer.save(requester=requester)
 
 
 class SpecialPlace(Place):
@@ -63,7 +58,7 @@ class SpecialPlace(Place):
     def __init__(
         self,
         name: str = "",
-        consumer: Callable[["SpecialPlace"], Awaitable[bool]] | None = None,
+        consumer: Callable[["SpecialPlace"], Awaitable[None]] | None = None,
         producer: Callable[["SpecialPlace"], Awaitable[list[TokenType]]] | None = None,
         **kwargs: Any,
     ) -> None:
@@ -75,7 +70,7 @@ class SpecialPlace(Place):
         :param producer: Custom :py:func:`soyutnet.pt_common.PTCommon._process_output_arcs` function.
         """
         super().__init__(name=name, **kwargs)
-        self._consumer: Callable[["SpecialPlace"], Awaitable[bool]] | None = consumer
+        self._consumer: Callable[["SpecialPlace"], Awaitable[None]] | None = consumer
         """Custom :py:func:`soyutnet.pt_common.PTCommon._process_input_arcs` function."""
         self._producer: (
             Callable[["SpecialPlace"], Awaitable[list[TokenType]]] | None
