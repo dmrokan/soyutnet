@@ -143,6 +143,25 @@ Data structures
 
       token: Tuple[label_t, id_t] = (label, id)
 
+**Token binding**
+    Tokens are not pure abstract structures. Each token can be binded to a
+    concrete data structure. This can be done via :py:attr:`soyutnet.SoyutNet.TokenRegistry`.
+
+    .. code-block:: python
+
+       an_object = an_instantiator()
+       net = SoyutNet()
+       treg = net.TokenRegistry()
+       actual_token = net.Token(label=label, binding=an_object)
+       treg.register(actual_token) # Registry assigns an auto incrementing ID
+       id_of_actual_token = actual_token._id
+
+    And, the binded object can be retrived somewhere else in the program as below.
+
+    .. code-block:: python
+
+       binded_object = treg.pop_entry((label, id_of_actual_token)).get_binding()
+
 **Place**
     Keeps a Python dictionary of tokens indexed by labels (:py:attr:`soyutnet.pt_common.PTCommon._tokens`).
 

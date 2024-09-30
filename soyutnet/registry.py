@@ -98,23 +98,41 @@ class Registry(BaseObject):
 
         return (INVALID_ID, None)
 
-    def get_entries(self, label: label_t, id: id_t) -> list[Any]:
+    def get_entry(
+        self, label: label_t, id: id_t | None = None, del_entry: bool = False
+    ) -> Any:
         """
-        Returns a list of objects with given label and ID.
+        Returns a token with given label and ID.
 
         :param label: Label.
-        :param id: ID.
-        :return: A list of objects.
+        :param id: ID. If ``None``, returns the first entry with the given label.
+        :param del_entry: Removes the entry from the registry if ``True``.
+        :return: The registered token.
         """
-        result: list[Any] = []
+        result: Any = None
         if label not in self._directory:
             return result
 
+        i: int = 0
         for entry in self._directory[label]:
-            if entry[0] == id:
-                result.append(entry[1])
+            if id is None or entry[0] == id:
+                result = entry[1]
+                if del_entry:
+                    del self._directory[label][i]
+                break
+            i += 1
 
         return result
+
+    def pop_entry(self, label: label_t, id: id_t | None = None) -> Any:
+        """
+        Returns a token with given label and ID and removes it from the registry.
+
+        :param label: Label.
+        :param id: ID. If ``None``, returns the first entry with the given label.
+        :return: The registered token.
+        """
+        return self.get_entry(label, id, del_entry=True)
 
     def entries(self, label: label_t | None = None) -> Generator[Any, None, None]:
         """
