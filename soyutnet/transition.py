@@ -55,6 +55,9 @@ class Transition(PTCommon):
         if self._record_firing:
             self._new_firing_record()
 
+        async with self._notifier:
+            self._notifier.notify_all()
+
         async for arc in self._get_input_arcs():
             await arc.observe_input_places(self._name)
             count: int = arc.weight
@@ -65,9 +68,6 @@ class Transition(PTCommon):
                 count -= 1
                 if count <= 0:
                     break
-
-        async with self._notifier:
-            self._notifier.notify_all()
 
         return True
 

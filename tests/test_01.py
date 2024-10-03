@@ -1,24 +1,38 @@
 import pytest
 import asyncio
+import random
 
 import soyutnet
 from soyutnet import SoyutNet
-from soyutnet.constants import GENERIC_LABEL, GENERIC_ID, INVALID_ID, INITIAL_ID
+from soyutnet.constants import (
+    GENERIC_LABEL,
+    GENERIC_ID,
+    INVALID_ID,
+    INITIAL_ID,
+    INVALID_LABEL,
+)
 
 
 @pytest.mark.asyncio
 async def test_01():
     net = SoyutNet()
     registry = net.TokenRegistry()
-    token = net.Token()
+    token1 = net.Token()
+    token2 = net.Token()
 
-    assert (INVALID_ID, None) == registry.get_first_entry(token.get_label())
-    registry.register(token)
-    assert token.get_id() == INITIAL_ID + 1
-    assert token.get_label() == GENERIC_LABEL
-    assert (token.get_id(), token) == registry.get_first_entry(token.get_label())
+    assert (INVALID_ID, None) == registry.get_first_entry(token1.get_label())
+    registry.register(token1)
+    registry.register(token2)
+    assert token1.get_id() == INITIAL_ID + 1
+    assert token1.get_label() == GENERIC_LABEL
+    assert (token1.get_id(), token1) == registry.get_first_entry(token1.get_label())
 
     assert registry.get_entry_count() == 1
+    assert registry.get_entry_count(INVALID_LABEL) == 0
+    assert registry.pop_entry(GENERIC_LABEL, token1._id) == token1
+    assert registry.pop_entry(INVALID_LABEL, random.randint(10, 1000)) == None
+    assert registry.pop_entry(GENERIC_LABEL) == token2
+    assert registry.pop_entry(INVALID_LABEL) == None
 
 
 @pytest.mark.asyncio

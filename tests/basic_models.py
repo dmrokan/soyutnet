@@ -26,6 +26,7 @@ def co_begin(action_count):
             return
         output_token_ids.remove(token[1])
         if not output_token_ids:
+            await net.sleep(0.01)
             soyutnet.terminate()
 
     net = SoyutNet()
@@ -36,8 +37,8 @@ def co_begin(action_count):
     reg = net.PTRegistry()
     p1 = net.Place("p1", initial_tokens={GENERIC_LABEL: token_ids})
     p2 = net.Place("p2", observer=o1)
-    t1 = net.Transition("t1")
-    t2 = net.Transition("t2")
+    t1 = net.Transition("t1", record_firing=True)
+    t2 = net.Transition("t2", record_firing=True)
     p1.connect(t1).connect(p2).connect(t2, weight=action_count)
     reg.register(p1)
     reg.register(p2)
@@ -51,7 +52,28 @@ def co_begin(action_count):
         reg.register(p3i)
         t2.connect(p3i)
 
-    soyutnet.run(reg)
+    total_firings = [0, 0]
+
+    async def firing_test1():
+        nonlocal total_firings
+        while True:
+            await t1.wait_for_firing()
+            total_firings[0] += 1
+
+    async def firing_test2():
+        nonlocal total_firings
+        while True:
+            await t2.wait_for_firing()
+            total_firings[1] += 1
+
+    soyutnet.run(reg, extra_routines=[firing_test1(), firing_test2()])
+
+    print(total_firings, t2.get_no_of_times_enabled())
+    assert total_firings[0] == t1.get_no_of_times_enabled() - 1
+    assert total_firings[0] == len(t1.get_firing_records()) - 1
+    """t1 notifies before firing_test1 starts waiting misses waiting for the first one."""
+    assert total_firings[1] == t2.get_no_of_times_enabled()
+    assert total_firings[1] == len(t2.get_firing_records())
 
 
 def co_end(action_count):

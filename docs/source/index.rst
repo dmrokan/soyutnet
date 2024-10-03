@@ -160,7 +160,7 @@ Data structures
 
     .. code-block:: python
 
-       binded_object = treg.pop_entry((label, id_of_actual_token)).get_binding()
+       binded_object = treg.pop_entry(label, id_of_actual_token).get_binding()
 
 **Place**
     Keeps a Python dictionary of tokens indexed by labels (:py:attr:`soyutnet.pt_common.PTCommon._tokens`).
@@ -287,7 +287,9 @@ The code below implements the `first example`_ but arcs have two labels in this 
       clusterrank=none;
     }
 
-    $ python3 first_example.py 1 | dot -Tpng > first_example.png # Generates the image below
+    $ python first_example.py 2>&1 > /dev/null | dot -Tpng > first_example.png
+
+Outputs:
 
 .. image:: _static/images/first_example.png
    :align: center
@@ -331,6 +333,7 @@ Simulations
 -----------
 
 * `PI-controller <https://soyutnet.readthedocs.io/projects/simulations/en/latest/src.pi_controller.html>`__
+* `HTTP balancer <https://soyutnet.readthedocs.io/projects/simulations/en/latest/src.http_balancer.html>`__
 
 Modules
 -------

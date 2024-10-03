@@ -29,6 +29,7 @@ test = [
   "pytest",
   "pytest-asyncio",
   "pytest-randomly",
+  "pytest-cov",
 ]
 dev = [
   "soyutnet[test]",
@@ -63,3 +64,7 @@ ignore_missing_imports = true
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+addopts = "--cov=soyutnet --cov-report="
+asyncio_default_fixture_loop_scope = "function"

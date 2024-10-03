@@ -195,10 +195,6 @@ class SoyutNet(object):
         """
         self._print(f"{self.get_loop_name()}:", *args, file=sys.stderr)
 
-    def Arc(self, *args: Any, **kwargs: Any) -> Arc:
-        kwargs["net"] = self
-        return Arc(*args, **kwargs)
-
     def Token(self, *args: Any, **kwargs: Any) -> Token:
         kwargs["net"] = self
         return Token(*args, **kwargs)
