@@ -46,7 +46,7 @@ def main():
     )
 
     print("\nRecorded events:")
-    [net.print(rec) for rec in records]
+    {None: net.print(rec) for rec in records}
     print("\nNet graph:")
     print(graph, file=sys.stderr)
 

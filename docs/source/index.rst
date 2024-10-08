@@ -334,6 +334,7 @@ Simulations
 
 * `PI-controller <https://soyutnet.readthedocs.io/projects/simulations/en/latest/src.pi_controller.html>`__
 * `HTTP balancer <https://soyutnet.readthedocs.io/projects/simulations/en/latest/src.http_balancer.html>`__
+* `HTTP server <https://soyutnet.readthedocs.io/projects/simulations/en/latest/src.http_server.html>`__
 
 Modules
 -------
