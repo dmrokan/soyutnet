@@ -1,3 +1,12 @@
+# Version 0.3.2
+
+- Measured, improved compatibilty with older Python versions
+- Added debug, error message logging
+
+# Version 0.3.1
+
+- Improved and documented token bindings
+
 # Version 0.3.0
 
 - Fix mistakes in PT net implementation
