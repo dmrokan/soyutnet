@@ -243,15 +243,15 @@ On the other hand, *SpecialPlace* class constructor accepts two extra optional a
 
 .. _producer:
 
-1. ``producer``: It is a callback function which is called to acquire tokens instead of the
-   default ``_process_input_arcs`` (:py:func:`soyutnet.pt_common.PTCommon._process_input_arcs`).
-   This function can be used to produce custom tokens by generating a label and ID. Then, it will
-   be injected into the PT net's flow.
+1. ``producer``: It is a callback function which is called to acquire tokens after the
+   default ``_process_input_arcs`` (:py:func:`soyutnet.pt_common.PTCommon._process_input_arcs`)
+   is called. This function can be used to produce custom tokens by generating a label and ID.
+   Then, it will be injected into the PT net's flow.
 
 .. _consumer:
 
-2. ``consumer``: This callback function is used instead of the default ``_process_output_arcs``
-   function (:py:func:`soyutnet.pt_common.PTCommon._process_output_arcs`) if it is provided.
+2. ``consumer``: This callback function is called before the default ``_process_output_arcs``
+   function (:py:func:`soyutnet.pt_common.PTCommon._process_output_arcs`) is called.
    It can be used as an end point of PT net model. The tokens acquired by this function can be
    redirected to other utilities.
 

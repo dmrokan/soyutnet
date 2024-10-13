@@ -4,6 +4,7 @@ import asyncio
 import signal
 import functools
 from typing import Any, Type, Coroutine, TextIO
+import logging
 
 from .constants import *
 from .registry import PTRegistry, TokenRegistry
@@ -87,38 +88,80 @@ class SoyutNet(object):
         self._LOOP_DELAY: float = 0.5
         self.DEBUG_ENABLED: bool = False
         """if set, :py:func:`soyutnet.SoyutNet.DEBUG` will print."""
-        self.VERBOSE_ENABLED: bool = False
+        self._VERBOSE_ENABLED: bool = False
         """if set, :py:func:`soyutnet.SoyutNet.DEBUG_V` will print."""
         self.SLOW_MOTION: bool = False
         """If set, task loops are delayed for :py:attr:`soyutnet.SoyutNet.LOOP_DELAY` seconds"""
         self.FLOAT_DECIMAL_PLACE_FORMAT: int = 6
         """Number of decimal places of floats in debug prints"""
+        self._LOG_FILE: str = ""
+        """Name of the log file"""
+        self._logger: logging.Logger | None = None
+        """Log handler"""
 
-    def _print(
-        self,
-        *args: Any,
-        file: TextIO = sys.stdout,
-        depth: int = 0,
-        separator: str = " ",
-    ) -> None:
+    @property
+    def LOG_FILE(self) -> str:
+        return self._LOG_FILE
+
+    @LOG_FILE.setter
+    def LOG_FILE(self, filename: str | None) -> None:
+        if filename is not None:
+            self._LOG_FILE = filename
+            self._logger = logging.getLogger(self.__class__.__name__)
+            self._logger.addHandler(logging.FileHandler(filename))
+        else:
+            self._logger = None
+
+    @property
+    def VERBOSE_ENABLED(self) -> bool:
+        return self._VERBOSE_ENABLED
+
+    @VERBOSE_ENABLED.setter
+    def VERBOSE_ENABLED(self, enabled: bool) -> None:
+        self._VERBOSE_ENABLED = enabled
+        logging.basicConfig(level=logging.INFO)
+
+    def __sprint(self, *args: Any, depth: int = 0, separator: str = " ") -> str:
+        output = ""
         for a in args:
             match a:
                 case tuple():
-                    file.write("(")
-                    self._print(*a, file=file, depth=depth + 1, separator=", ")
-                    file.write(")")
+                    output += (
+                        "(" + self.__sprint(*a, depth=depth + 1, separator=", ") + ")"
+                    )
                 case list():
-                    file.write("[")
-                    self._print(*a, file=file, depth=depth + 1, separator=", ")
-                    file.write("]" + os.linesep)
+                    output += (
+                        "["
+                        + self.__sprint(*a, depth=depth + 1, separator=", ")
+                        + "]"
+                        + os.linesep
+                    )
                 case float():
-                    file.write(f"{a:.{self.FLOAT_DECIMAL_PLACE_FORMAT}f}")
+                    output += f"{a:.{self.FLOAT_DECIMAL_PLACE_FORMAT}f}"
                 case _:
-                    file.write(str(a))
-            file.write(separator)
+                    output += str(a)
+            output += separator
 
         if depth == 0:
-            file.write(os.linesep)
+            output += os.linesep
+
+        return output
+
+    def __print(self, *args: Any, file: TextIO = sys.stdout, **kwargs: Any) -> None:
+        file.write(self.__sprint(*args, **kwargs))
+
+    def _print(self, *args: Any, file: TextIO = sys.stdout, **kwargs: Any) -> None:
+        if self._logger is not None:
+            self._logger.info(self.__sprint(*args, depth=1, **kwargs))
+        else:
+            self.__print(*args, file=file, **kwargs)
+
+    def _error(self, *args: Any, file: TextIO = sys.stdout, **kwargs: Any) -> None:
+        if self._logger is not None:
+            self._logger.error(self.__sprint(*args, depth=1, **kwargs))
+        else:
+            self.__print("ERR:", file=file, depth=1, **kwargs)
+            self._print(*args, **kwargs)
 
     @property
     def LOOP_DELAY(self) -> float:
@@ -172,15 +215,15 @@ class SoyutNet(object):
         """
         Print debug messages when :py:attr:`soyutnet.SoyutNet.VERBOSE_ENABLED`.
         """
-        if self.DEBUG_ENABLED and self.VERBOSE_ENABLED:
-            self._print(f"{self.get_loop_name()}:", *args)
+        if self.DEBUG_ENABLED and self._VERBOSE_ENABLED:
+            self._error(f"{self.get_loop_name()}:", *args)
 
     def ERROR_V(self, *args: Any) -> None:
         """
         Print error messages when :py:attr:`soyutnet.SoyutNet.VERBOSE_ENABLED`.
         """
-        if self.VERBOSE_ENABLED:
-            self._print(f"{self.get_loop_name()}:", *args, file=sys.stderr)
+        if self._VERBOSE_ENABLED:
+            self._error(f"{self.get_loop_name()}:", *args, file=sys.stderr)
 
     def DEBUG(self, *args: Any) -> None:
         """
@@ -193,7 +236,7 @@ class SoyutNet(object):
         """
         Print error messages.
         """
-        self._print(f"{self.get_loop_name()}:", *args, file=sys.stderr)
+        self._error(f"{self.get_loop_name()}:", *args, file=sys.stderr)
 
     def Token(self, *args: Any, **kwargs: Any) -> Token:
         kwargs["net"] = self

@@ -3,11 +3,17 @@ import string
 import weakref
 from weakref import ReferenceType
 from typing import (
+    Any,
     Tuple,
-    Never,
     Dict,
     TYPE_CHECKING,
 )
+
+try:
+    from typing import Never
+except ImportError:
+    """Never requires python>=3.11"""
+    Never = Any
 
 label_t = int
 """Label type"""

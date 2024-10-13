@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 
 import soyutnet
 from soyutnet import SoyutNet
@@ -35,6 +36,45 @@ def main():
             soyutnet.terminate()
 
     net = SoyutNet()
+    net.DEBUG_ENABLED = True
+    net.VERBOSE_ENABLED = True
+    net.ERROR(
+        [
+            {
+                0: "ABCD",
+                1: [
+                    1,
+                    2,
+                    3,
+                ],
+            },
+            (0, "ABCD", [1, 3, 3.0, b"ABCD"]),
+        ]
+    )
+    log_file = Path(__file__).resolve().parent / "log.tmp"
+    log_filename = str(log_file)
+    net.LOG_FILE = log_filename
+    assert net.LOG_FILE == log_filename
+    net.SLOW_MOTION = True
+    net.LOOP_DELAY = 0
+    net.ERROR(
+        [
+            {
+                0: "ABCD",
+                1: [
+                    1,
+                    2,
+                    3,
+                ],
+            },
+            (0, "ABCD", [1, 3, 3.0, b"ABCD"]),
+            tuple(),
+            list(),
+            dict(),
+        ]
+    )
+
+    assert net.VERBOSE_ENABLED
 
     o1 = net.ComparativeObserver(
         expected={1: [((GENERIC_LABEL, 1),)] * 5},
@@ -60,6 +100,8 @@ def main():
 
     soyutnet.run(reg)
     print("Simulation is terminated.")
+
+    log_file.unlink()
 
     records = reg.get_merged_records()
     for r in records:

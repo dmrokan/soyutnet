@@ -4,7 +4,6 @@ from weakref import ref, ReferenceType
 from typing import (
     Any,
     AsyncGenerator,
-    Self,
     Dict,
     Tuple,
     Generator,
@@ -12,6 +11,12 @@ from typing import (
     Callable,
     TYPE_CHECKING,
 )
+
+try:
+    from typing import Self
+except ImportError:
+    """Self requires python>=3.11"""
+    Self = Any
 
 from .constants import *
 from .token import Token
