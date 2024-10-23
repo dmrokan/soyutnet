@@ -73,7 +73,7 @@ def test_06():
 
 
 def test_07():
-    import simple_example_two_input_places_but_different_weights as e
+    import simple_example_two_input_places_different_weights as e
 
     e.main(w1=3, w2=2)
 

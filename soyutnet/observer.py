@@ -75,8 +75,7 @@ class Observer(BaseObject):
         count: int = -1
         if self._record_limit > 0:
             async with self._lock:
-                count = len(self._records)
-                if count >= self._hysteresis_bounds[1]:
+                if (count := len(self._records)) >= self._hysteresis_bounds[1]:
                     self._records = self._records[count - self._hysteresis_bounds[0] :]
                     count = len(self._records)
 
@@ -200,7 +199,7 @@ class ComparativeObserver(Observer):
         """The list of values to be compared to"""
         self._expected_index: int = 0
         """Index of the last value compared in the list"""
-        self._is_still_comparing: bool = True
+        self._is_comparing: bool = True
         """Set to ``False`` when there are no values left to compare in :py:attr:`soyutnet.observer.ComparativeObserver._expected`"""
         self._on_comparison_ends: Callable[["ComparativeObserver"], None] | None = (
             on_comparison_ends
@@ -214,11 +213,13 @@ class ComparativeObserver(Observer):
         :param record: Record.
         :return: Number of records.
         """
-        if self._is_still_comparing:
+        if self._is_comparing:
             column_count: int = 0
             for column in self._expected:
                 if len(self._expected[column]) <= self._expected_index:
                     continue
+                else:
+                    column_count += 1
                 value: Any = self._expected[column][self._expected_index]
                 if record[column] != value:
                     raise RuntimeError(
@@ -229,18 +230,13 @@ class ComparativeObserver(Observer):
                         f"({column}, {record[column]}) == ({column}, {value})"
                     )
 
-                if len(self._expected[column]) - 1 >= self._expected_index:
-                    column_count += 1
-
             self._expected_index += 1
             if column_count == 0:
-                self._is_still_comparing = False
+                self._is_comparing = False
                 if self._verbose:
                     await self._display_records()
                 if self._on_comparison_ends is not None:
                     self.net.DEBUG("comparison ends")
                     self._on_comparison_ends(self)
 
-        if self._verbose:
-            self.net.DEBUG(f"REC: {self.ident()}:", record)
-        self._add_record(record)
+        await super()._save(record)

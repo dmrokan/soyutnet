@@ -216,7 +216,7 @@ class SoyutNet(object):
         Print debug messages when :py:attr:`soyutnet.SoyutNet.VERBOSE_ENABLED`.
         """
         if self.DEBUG_ENABLED and self._VERBOSE_ENABLED:
-            self._error(f"{self.get_loop_name()}:", *args)
+            self._print(f"{self.get_loop_name()}:", *args)
 
     def ERROR_V(self, *args: Any) -> None:
         """

@@ -1,6 +1,7 @@
 import sys
 import asyncio
 from weakref import ref, ReferenceType
+from copy import deepcopy
 from typing import (
     Any,
     AsyncGenerator,
@@ -206,9 +207,7 @@ class PTCommon(Token):
         self._output_arcs: list[Arc] = []
         """List of output arcs"""
         self._last_processed_output_arc_index: int = 0
-        self._tokens: TokenWalletType = {
-            label: list(initial_tokens[label]) for label in initial_tokens
-        }
+        self._tokens: TokenWalletType = deepcopy(initial_tokens)
         """Keeps tokens"""
         self._observer: Observer | None = None
         """Observes the tokens before each firing of output transitions"""
@@ -479,6 +478,5 @@ async def _loop(pt: PTCommon) -> None:
 
     while await pt.should_continue():
         await pt.net.sleep(pt.net.LOOP_DELAY)
-        pass
 
     pt.net.DEBUG_V(f"{pt.ident()}: Loop ended")

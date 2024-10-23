@@ -71,7 +71,7 @@ def co_begin(action_count):
     print(total_firings, t2.get_no_of_times_enabled())
     assert total_firings[0] == t1.get_no_of_times_enabled() - 1
     assert total_firings[0] == len(t1.get_firing_records()) - 1
-    """t1 notifies before firing_test1 starts waiting misses waiting for the first one."""
+    """t1 notifies before firing_test1 tasks starts.So, the first firing is missed."""
     assert total_firings[1] == t2.get_no_of_times_enabled()
     assert total_firings[1] == len(t2.get_firing_records())
 

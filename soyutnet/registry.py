@@ -216,7 +216,6 @@ class PTRegistry(Registry):
         place_names: list[str] = [],
     ) -> MergedRecordsType:
         """
-        TODO
         Merges all observer records and sorts by their timestamps.
 
         :return: Merged and sorted observer records.
@@ -237,7 +236,8 @@ class PTRegistry(Registry):
             for record in obsv.get_records():
                 output.append((name, record))
 
-        return sorted(output, key=lambda rec: rec[1][0])
+        output.sort(key=lambda rec: rec[1][0])
+        return output
 
     def _get_graphviz_node_definition(self, pt: PTCommon, t: int) -> str:
         shape: str = "circle"
