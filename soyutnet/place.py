@@ -1,5 +1,5 @@
 import asyncio
-from typing import (
+from typing_extensions import (
     Any,
     Tuple,
     Awaitable,
@@ -29,7 +29,8 @@ class Place(PTCommon):
 
         :param name: Name of the place.
         :param observer: Observer instance assigned to the place.
-        :param observer_record_limit: Maximum number of records that is recorded by the observer. It is unlimited when chosen ``0``.
+        :param observer_record_limit: Maximum number of records that is recorded \
+                                      by the observer. It is unlimited when chosen ``0``.
         :param observer_verbose: If set, observer will print new records when saved.
         """
         super().__init__(name=name, **kwargs)
@@ -44,7 +45,8 @@ class Place(PTCommon):
 
         Also, add the number of tokens sent to the caller arc.
 
-        :param token_count_in_arc: Number of tokens in the output arc of places must also be added to the count.
+        :param token_count_in_arc: Number of tokens in the output arc of \
+                                   places must also be added to the count.
         """
         if self._observer is not None:
             await self._observer.save(requester=requester)
@@ -82,7 +84,8 @@ class SpecialPlace(Place):
         Calls custom producer function after the default
         :py:func:`soyutnet.pt_common.PTCommon._process_input_arcs`.
 
-        :return: If ``True`` continues to processing tokens and output arcs, else loops back to processing input arcs.
+        :return: If ``True`` continues to processing tokens and output arcs, \
+                 else loops back to processing input arcs.
         """
         result: bool = await super()._process_input_arcs()
         if self._producer is not None:
@@ -111,7 +114,8 @@ class SpecialPlace(Place):
 
     async def _process_tokens(self) -> bool:
         """
-        Calls custom consumer function. If it is ``None`` calls :py:func:`soyutnet.pt_common.PTCommon._process_tokens` function.
+        Calls custom consumer function. If it is ``None`` calls \
+        :py:func:`soyutnet.pt_common.PTCommon._process_tokens` function.
         """
         if not await super()._process_tokens():
             return False

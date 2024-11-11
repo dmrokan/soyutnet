@@ -14,6 +14,7 @@ soyutnet.pt\_common module
 .. automodule:: soyutnet.pt_common
    :members:
    :show-inheritance:
+   :special-members: __rshift__, __lshift__, __gt__, __lt__
 
 soyutnet.place module
 ---------------------

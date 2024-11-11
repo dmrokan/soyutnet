@@ -2,18 +2,13 @@ import random
 import string
 import weakref
 from weakref import ReferenceType
-from typing import (
+from typing_extensions import (
     Any,
     Tuple,
     Dict,
     TYPE_CHECKING,
+    Never,
 )
-
-try:
-    from typing import Never
-except ImportError:
-    """Never requires python>=3.11"""
-    Never = Any
 
 label_t = int
 """Label type"""
@@ -39,6 +34,12 @@ INITIAL_ID: id_t = 0
 
 
 def random_identifier(N: int = 5) -> str:
+    """
+    Generates a random string.
+
+    :param N: Length of random string
+    :return: Random string
+    """
     return "".join(
         random.SystemRandom().choice(string.ascii_uppercase + string.digits)
         for _ in range(N)
@@ -54,6 +55,9 @@ class BaseObject(object):
         self._net: ReferenceType["SoyutNet"] = weakref.ref(net)
         """Reference to the creator SoyutNet instance."""
         self._ident0: str = random_identifier()
+
+    def __repr__(self) -> str:
+        return f"<{type(self)}, ident={self.ident()}>"
 
     @property
     def net(self) -> "SoyutNet":

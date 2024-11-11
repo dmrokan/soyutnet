@@ -1,3 +1,11 @@
+# Version 0.4.0
+
+- Simplified PT net generation
+- Added simpler PT connection syntax
+- Imroved test flow
+- Added PT connection validation
+- Backwards compatible annotation by 'typing_extensions'
+
 # Version 0.3.2
 
 - Measured, improved compatibilty with older Python versions

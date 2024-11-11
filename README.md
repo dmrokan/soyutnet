@@ -45,37 +45,29 @@ def main():
         await asyncio.sleep(1)
         soyutnet.terminate()
 
-    net = SoyutNet()
-    net.DEBUG_ENABLED = True
+    with SoyutNet(extra_routines=[scheduled()]) as net:
+        net.DEBUG_ENABLED = True
 
-    LABEL = 1
-    initial_tokens = {
-        GENERIC_LABEL: [GENERIC_ID],
-        LABEL: [1000, 990],
-    }
-    reg = net.PTRegistry()
-    o1 = net.Observer(verbose=True)
-    p1 = net.Place("p1", initial_tokens=initial_tokens, observer=o1)
-    o2 = net.Observer(verbose=True)
-    p2 = net.Place("p2", observer=o2)
-    t1 = net.Transition("t1")
-    """Define places and transitions (PTs)"""
+        LABEL = 1
+        initial_tokens = {
+            GENERIC_LABEL: [GENERIC_ID],
+            LABEL: [1000, 990],
+        }
+        o1 = net.Observer(verbose=True)
+        p1 = net.Place("p1", initial_tokens=initial_tokens, observer=o1)
+        o2 = net.Observer(verbose=True)
+        p2 = net.Place("p2", observer=o2)
+        t1 = net.Transition("t1")
+        """Define places and transitions (PTs)"""
 
-    p1.connect(t1, labels=[GENERIC_LABEL, LABEL]).connect(
-        p2, labels=[GENERIC_LABEL, LABEL]
+        _ = net.Arc(labels=(GENERIC_LABEL, LABEL))
+        p1 >> _ >> t1 >> _ >> p2
+        """Connect PTs"""
+
+    records = net.registry.get_merged_records()
+    graph = net.registry.generate_graph(
+        indent="  ", label_names={LABEL: "🤔", GENERIC_LABEL: "🤌"}
     )
-    """Connect PTs"""
-
-    reg.register(p1)
-    reg.register(p2)
-    reg.register(t1)
-    """Save to a list of PTs"""
-
-    soyutnet.run(reg, extra_routines=[scheduled()])
-    print("Simulation is terminated.")
-
-    records = reg.get_merged_records()
-    graph = reg.generate_graph(indent="  ", label_names={ LABEL: "🤔", GENERIC_LABEL: "🤌" })
 
     print("\nRecorded events:")
     {net.print(rec) for rec in records}
@@ -92,17 +84,16 @@ if __name__ == "__main__":
 outputs:
 
 ```
-$ python tests/readme_example.py
+$ python tests/behavior/readme_example.py
 
-loop(t1, 3): REC: O{(p1, 1)}: (193215.922177, ((0, 1, ), (1, 2, ), ), t1, ) 
-loop(t1, 3): REC: O{(p1, 1)}: (193215.922371, ((0, 0, ), (1, 2, ), ), t1, ) 
-loop(t1, 3): REC: O{(p1, 1)}: (193215.922544, ((0, 0, ), (1, 1, ), ), t1, ) 
-Simulation is terminated.
+loop(t1, 3): REC: O{(p1, 1)}: (112199.881220, ((0, 1, ), (1, 2, ), ), t1, )
+loop(t1, 3): REC: O{(p1, 1)}: (112199.881402, ((0, 0, ), (1, 2, ), ), t1, )
+loop(t1, 3): REC: O{(p1, 1)}: (112199.881550, ((0, 0, ), (1, 1, ), ), t1, )
 
 Recorded events:
-(p1, (193215.922177, ((0, 1, ), (1, 2, ), ), t1, ), ) 
-(p1, (193215.922371, ((0, 0, ), (1, 2, ), ), t1, ), ) 
-(p1, (193215.922544, ((0, 0, ), (1, 1, ), ), t1, ), ) 
+(p1, (112199.881220, ((0, 1, ), (1, 2, ), ), t1, ), )
+(p1, (112199.881402, ((0, 0, ), (1, 2, ), ), t1, ), )
+(p1, (112199.881550, ((0, 0, ), (1, 1, ), ), t1, ), )
 
 Net graph:
 digraph Net {
@@ -130,7 +121,7 @@ A list of place markings that show token counts for each label recorded just bef
 
 ```bash
 sudo apt install graphviz # Which provides 'dot'
-python tests/readme_example.py 2>&1 > /dev/null | dot -Tpng > readme_example.png
+python tests/behavior/readme_example.py 2>&1 > /dev/null | dot -Tpng > readme_example.png
 ```
 
 Outputs:

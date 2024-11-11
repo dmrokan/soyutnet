@@ -3,7 +3,7 @@ import os
 import asyncio
 import signal
 import functools
-from typing import Any, Type, Coroutine, TextIO
+from typing_extensions import Any, Type, Coroutine, TextIO, Callable, Self, Sequence
 import logging
 
 from .constants import *
@@ -13,6 +13,7 @@ from .observer import MergedRecordsType, Observer, ComparativeObserver
 from .transition import Transition
 from .place import Place, SpecialPlace
 from .token import Token
+from .validate import init_validator
 
 
 def _int_handler(
@@ -21,7 +22,7 @@ def _int_handler(
     print(f"Got signal '{signame}'")
 
     if signame == "SIGINT" or signame == "SIGTERM":
-        print(">>>>>>>>>>>>>>>>>>>>>>>>> <<<<<<<<<<<<<<<<<<<<<<<<<")
+        print("Terminating...")
         loop.stop()
 
 
@@ -84,7 +85,10 @@ def run(*args: Any, ignore_cancelled_exception: bool = True, **kwargs: Any) -> N
 
 
 class SoyutNet(object):
-    def __init__(self) -> None:
+    class Break(Exception):
+        """Raised from :meth:`.bye` to exit SoyutNet context prematurely."""
+
+    def __init__(self, extra_routines: list[Coroutine[Any, Any, None]] = []) -> None:
         self._LOOP_DELAY: float = 0.5
         self.DEBUG_ENABLED: bool = False
         """if set, :py:func:`soyutnet.SoyutNet.DEBUG` will print."""
@@ -98,6 +102,15 @@ class SoyutNet(object):
         """Name of the log file"""
         self._logger: logging.Logger | None = None
         """Log handler"""
+        self._AUTO_REGISTER: bool = False
+        """Automatically register when a new PT created."""
+        self._reg: PTRegistry | None = None
+        """Auto created PT registry if AUTO_REGISTER is enabled."""
+        self._extra_routines: list[Coroutine[Any, Any, None]] = extra_routines
+        """List of additional task functions to be run in a SoyutNet context."""
+
+        init_validator(classes=[PTCommon, Place, Transition, Arc])
+        self.AUTO_REGISTER = False
 
     @property
     def LOG_FILE(self) -> str:
@@ -120,6 +133,14 @@ class SoyutNet(object):
     def VERBOSE_ENABLED(self, enabled: bool) -> None:
         self._VERBOSE_ENABLED = enabled
         logging.basicConfig(level=logging.INFO)
+
+    @property
+    def AUTO_REGISTER(self) -> bool:
+        return self._AUTO_REGISTER
+
+    @AUTO_REGISTER.setter
+    def AUTO_REGISTER(self, value: bool) -> None:
+        self._AUTO_REGISTER = value
 
     def __sprint(self, *args: Any, depth: int = 0, separator: str = " ") -> str:
         output = ""
@@ -163,6 +184,70 @@ class SoyutNet(object):
             self.__print("ERR:", file=file, depth=1, **kwargs)
             self._print(*args, **kwargs)
 
+    def __enter__(self) -> Self:
+        self.AUTO_REGISTER = True
+        return self
+
+    def __exit__(
+        self, exc_type: Any, exc_value: Any, traceback: Any
+    ) -> bool:  # TODO: Fix annotation
+        self.AUTO_REGISTER = False
+        if exc_type is self.Break:
+            return True
+        if self._reg is not None:
+            run(self._reg, extra_routines=self._extra_routines)
+        else:
+            self.ERROR("No net is defined to run.")
+        return False
+
+    def __lshift__(self, pt: PTCommon | tuple[PTCommon]) -> Self:
+        """
+        More readable way to add PTs to the SoyutNet instance.
+
+        ``net << a << b`` is equivalent to
+
+        .. code:: python
+
+           net.registry.register(a)
+           net.registry.register(b)
+
+        :param pt: PT to be connected.
+        :return: self
+        """
+        pts: tuple[PTCommon] = (pt,) if isinstance(pt, PTCommon) else pt
+        {self.registry.register(entry) for entry in tuple(pts)}
+        return self
+
+    @staticmethod
+    def _auto_register(
+        func: Callable[[Any, Any], PTCommon]
+    ) -> Callable[[Any, Any], PTCommon]:
+        """
+        Decorator for automatically registering a new PT instance.
+
+        e.g.
+        .. code:: python
+
+           p = net.Place()
+           t = net.Transition()
+
+        automatically calls
+
+        .. code:: python
+
+           net.registry.register(p)
+           net.registry.register(t)
+
+        """
+
+        def wrapper(this: Self, *args: Any, **kwargs: Any) -> PTCommon:
+            pt: PTCommon = func(this, *args, **kwargs)
+            if this.AUTO_REGISTER and isinstance(pt, PTCommon):
+                this.registry.register(pt)
+            return pt
+
+        return wrapper
+
     @property
     def LOOP_DELAY(self) -> float:
         """
@@ -172,11 +257,19 @@ class SoyutNet(object):
         """
         if self.SLOW_MOTION:
             return self._LOOP_DELAY
+
         return 0
 
     @LOOP_DELAY.setter
     def LOOP_DELAY(self, amount: float) -> None:
         self._LOOP_DELAY = amount
+
+    @property
+    def registry(self) -> PTRegistry:
+        if self._reg is None:
+            self._reg = self.PTRegistry()
+
+        return self._reg
 
     async def sleep(self, amount: float = 0.0) -> None:
         """
@@ -201,7 +294,7 @@ class SoyutNet(object):
 
         :return: Name of the loop.
         """
-        name: str = "NO-LOOP"
+        name: str = "N/A"
         try:
             task: asyncio.Task[Any] | None = asyncio.current_task()
             if isinstance(task, asyncio.Task):
@@ -242,14 +335,17 @@ class SoyutNet(object):
         kwargs["net"] = self
         return Token(*args, **kwargs)
 
+    @_auto_register
     def Place(self, *args: Any, **kwargs: Any) -> Place:
         kwargs["net"] = self
         return Place(*args, **kwargs)
 
+    @_auto_register
     def SpecialPlace(self, *args: Any, **kwargs: Any) -> SpecialPlace:
         kwargs["net"] = self
         return SpecialPlace(*args, **kwargs)
 
+    @_auto_register
     def Transition(self, *args: Any, **kwargs: Any) -> Transition:
         kwargs["net"] = self
         return Transition(*args, **kwargs)
@@ -270,5 +366,22 @@ class SoyutNet(object):
         kwargs["net"] = self
         return PTRegistry(*args, **kwargs)
 
+    def Arc(
+        self,
+        start: PTCommon | None = None,
+        end: PTCommon | None = None,
+        weight: int = 1,
+        labels: Sequence[label_t] = (GENERIC_LABEL,),
+    ) -> Arc:
+        return Arc(start=start, end=end, weight=weight, labels=labels)
+
     def print(self, *args: Any, **kwargs: Any) -> None:
         self._print(*args, **kwargs)
+
+    def bye(self) -> None:
+        """
+        Prematurely exits the SoyutNet context when called.
+
+        :raises: :class:`.Break`
+        """
+        raise self.Break

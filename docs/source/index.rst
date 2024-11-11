@@ -136,6 +136,8 @@ Data structures
     An integer value. Its type is ``id_t = int``. It can be the generic ID
     (:py:attr:`soyutnet.constants.GENERIC_ID`) or any positive integer.
 
+.. _token-def:
+
 **Token**
     It is defined as a tuple of a label and an ID.
 
@@ -270,7 +272,7 @@ Example code
 The code below implements the `first example`_ but arcs have two labels in this case. It means
 :math:`t1` and :math:`p2` will accept tokens with both labels.
 
-.. literalinclude:: ../../tests/readme_example.py
+.. literalinclude:: ../../tests/behavior/readme_example.py
    :language: python
 
 .. code:: bash
@@ -328,6 +330,14 @@ Examples
    :maxdepth: 2
 
    examples
+
+PT connection examples
+----------------------
+
+.. toctree::
+   :maxdepth: 2
+
+   connection_examples
 
 Simulations
 -----------

@@ -1,6 +1,6 @@
 import asyncio
 from weakref import ref, ReferenceType
-from typing import (
+from typing_extensions import (
     Any,
     Dict,
     Tuple,
@@ -17,7 +17,8 @@ else:
 
 
 ObserverRecordType = Tuple[float, Tuple[TokenType, ...], str]
-"""Observer records: (observation time, label, no of tokens with the label, identity of requester of the record)"""
+"""Observer records: (observation time, label, no of tokens with the \
+label, identity of requester of the record)"""
 ObserverHistoryType = list[ObserverRecordType]
 """Type for a list of :py:attr:`soyutnet.observer.ObserverRecordType`"""
 MergedRecordsType = list[Tuple[str, ObserverRecordType | Tuple[float]]]
@@ -39,7 +40,7 @@ class Observer(BaseObject):
         """
         Constructor.
 
-        :param record_limit: Maximum number of records to be kept. It is unlimited if chose ``0``.
+        :param record_limit: Maximum number of records to be kept. It is unlimited if chosen ``0``.
         :param verbose: Print observations if ``True``.
         :param place: Reference to the :py:class:`soyutnet.place.Place` that is observed.
         """
@@ -150,7 +151,8 @@ class Observer(BaseObject):
         """
         Returns the records at the specified column.
 
-        :param column: The column index of records requested. It returns all columns if it it ``-1``.
+        :param column: The column index of records requested. It returns \
+                       all columns if it it ``-1``.
         :return: List of records.
         """
         if column < 0:
@@ -192,7 +194,8 @@ class ComparativeObserver(Observer):
         Constructor.
 
         :param expected: Values to be compared to.
-        :param on_comparison_ends: Callback function to be called when all values in :py:attr:`self.expected` are used.
+        :param on_comparison_ends: Callback function to be called when all values \
+                                   in :py:attr:`self.expected` are used.
         """
         super().__init__(**kwargs)
         self._expected: Dict[int, list[Any]] = expected
@@ -200,7 +203,8 @@ class ComparativeObserver(Observer):
         self._expected_index: int = 0
         """Index of the last value compared in the list"""
         self._is_comparing: bool = True
-        """Set to ``False`` when there are no values left to compare in :py:attr:`soyutnet.observer.ComparativeObserver._expected`"""
+        """Set to ``False`` when there are no values left to compare in \
+           :py:attr:`soyutnet.observer.ComparativeObserver._expected`"""
         self._on_comparison_ends: Callable[["ComparativeObserver"], None] | None = (
             on_comparison_ends
         )

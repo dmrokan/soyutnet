@@ -2,7 +2,10 @@ import sys
 import asyncio
 from weakref import ref, ReferenceType
 from copy import deepcopy
-from typing import (
+from functools import reduce
+from itertools import chain
+import operator
+from typing_extensions import (
     Any,
     AsyncGenerator,
     Dict,
@@ -11,17 +14,15 @@ from typing import (
     Awaitable,
     Callable,
     TYPE_CHECKING,
+    Self,
+    Sequence,
+    Set,
 )
-
-try:
-    from typing import Self
-except ImportError:
-    """Self requires python>=3.11"""
-    Self = Any
 
 from .constants import *
 from .token import Token
 from .observer import Observer
+from .validate import validate_net
 
 
 if TYPE_CHECKING:
@@ -40,7 +41,7 @@ class Arc(object):
         start: Any,
         end: Any,
         weight: int = 1,
-        labels: list[label_t] = [GENERIC_LABEL],
+        labels: Sequence[label_t] = (GENERIC_LABEL,),
     ) -> None:
         """
         Constructor.
@@ -50,34 +51,81 @@ class Arc(object):
         :param weight: Arc weight.
         :param labels: List of arc label.
         """
-        self.start: ReferenceType[Any] = ref(start)
+        self._start: ReferenceType[Any] | None = None
         """Input place/transition"""
         self.index_at_start: int = -1
         """Index in the list of output arcs of :py:attr:`soyutnet.pt_common.Arc.start`"""
-        self.end: ReferenceType[Any] = ref(end)
+        self._end: ReferenceType[Any] | None = None
         """Output place/transition"""
         self.index_at_end: int = -1
         """Index in the list of output arcs of :py:attr:`soyutnet.pt_common.Arc.end`"""
         self.weight: int = weight
         """Arc weight"""
-        self._labels: list[label_t] = list(labels)
+        self._labels: tuple[label_t, ...] = tuple(labels)
         """The list of arc labels"""
         self._last_processed_label_index: int = 0
         self._queue: Queue = Queue(maxsize=weight)
         """Input/output queue for transmitting tokens from :py:attr:`soyutnet.pt_common.Arc.start` to :py:attr:`soyutnet.pt_common.Arc.end`"""
 
+        self.start = start
+        self.end = end
+
+    @staticmethod
+    def _validate(func: Any) -> Any:  # TODO: Fix annotation
+        """
+        Decorator to automatically validate a value provided to
+        a setter is correct.
+        """
+
+        def wrapped(this: Self, *args: Any, **kwargs: Any) -> Any:
+            output: Any = func(this, *args, **kwargs)
+            validate_net(this, func, output, *args, **kwargs)
+            return output
+
+        return wrapped
+
+    @property
+    def start(self) -> Any:
+        if self._start is not None:
+            return self._start()
+
+        return None
+
+    @start.setter
+    @_validate
+    def start(self, s: Any) -> None:
+        if s is not None:
+            self._start = ref(s)
+        else:
+            self._start = s
+
+    @property
+    def end(self) -> Any:
+        if self._end is not None:
+            return self._end()
+
+        return None
+
+    @end.setter
+    @_validate
+    def end(self, e: Any) -> None:
+        if e is not None:
+            self._end = ref(e)
+        else:
+            self._end = e
+
     def __str__(self) -> str:
         """
-        Returns string representation of the arc.
+        Returns the string representation of the arc.
 
         :return: String representation of the arc.
         """
         start_ident: str = ""
-        start_ref: Any = self.start()
+        start_ref: Any = self.start
         if start_ref is not None:
             start_ident = start_ref.ident()
         end_ident: str = ""
-        end_ref: Any = self.end()
+        end_ref: Any = self.end
         if end_ref is not None:
             end_ident = end_ref.ident()
         return (
@@ -85,9 +133,27 @@ class Arc(object):
             f"l={{{self._labels}}}, w={self.weight}"
         )
 
+    @_validate
+    def __rshift__(self, pt: Any) -> Any:
+        return self.start.__rshift__(pt, self)
+
+    @_validate
+    def __lshift__(self, pt: Any) -> Any:
+        return self.start.__lshift__(pt, self)
+
+    @_validate
+    def __gt__(self, pt: Any) -> Any:
+        return self.start.__gt__(pt, self)
+
+    @_validate
+    def __lt__(self, pt: Any) -> Any:
+        return self.start.__lt__(pt, self)
+
     async def wait(self) -> AsyncGenerator[TokenType, None]:
         """
-        Acquires :py:attr:`soyutnet.pt_common.Arc.weight` tokens from :py:attr:`soyutnet.pt_common.Arc.start` and yields them to :py:attr:`soyutnet.pt_common.Arc.end`
+        Acquires :py:attr:`soyutnet.pt_common.Arc.weight` tokens \
+        from :py:attr:`soyutnet.pt_common.Arc.start` and yields them \
+        to :py:attr:`soyutnet.pt_common.Arc.end`
 
         :return: Tokens.
         """
@@ -110,7 +176,8 @@ class Arc(object):
 
     def is_enabled(self) -> bool:
         """
-        It is checked by the output transition at :py:attr:`soyutnet.pt_common.Arc.end` to detemine the transition is enabled or not.
+        It is checked by the output transition at :py:attr:`soyutnet.pt_common.Arc.end` \
+        to detemine the transition is enabled or not.
 
         :return: ``True`` if enabled.
         """
@@ -118,18 +185,23 @@ class Arc(object):
 
     async def observe_input_places(self, requester: str = "") -> None:
         """
-        It is called by the output transition at :py:attr:`soyutnet.pt_common.Arc.end` after the transition is enabled.
+        It is called by the output transition at :py:attr:`soyutnet.pt_common.Arc.end` \
+        after the transition is enabled.
 
         It records the tokens counts just before the transition happens.
 
         :param requester: The identity of caller.
         """
-        start_ref: Any = self.start()
+        start_ref: Any = self.start
         if start_ref is not None:
             await start_ref.observe(requester=requester)
 
     async def notify_observer(self, label: label_t, increment: int = -1) -> None:
-        start_ref: Any = self.start()
+        """
+        Called from :meth:`soyutnet.transition.Transition._process_input_arcs`
+        when the transition is fired.
+        """
+        start_ref: Any = self.start
         if start_ref is not None and start_ref._observer is not None:
             await start_ref._observer.inc_token_count(label, increment)
 
@@ -142,8 +214,8 @@ class Arc(object):
         :param t: Event index for clustering multiple steps of PT net simulation.
         :return: Edge definition.
         """
-        start_ref: Any = self.start()
-        end_ref: Any = self.end()
+        start_ref: Any = self.start
+        end_ref: Any = self.end
         if end_ref is not None and start_ref is not None:
             labels_: list[str] = []
             for l in self._labels:
@@ -167,6 +239,12 @@ class Arc(object):
     def labels(
         self, remember_last_processed: bool = False
     ) -> Generator[label_t, None, None]:
+        """
+        Generator to iterate through arc labels, :attr:`._labels`.
+
+        :param remember_last_processed: Continue iteration from the last index \
+                                        recorded a previous iteration.
+        """
         count: int = len(self._labels)
         i: int = 0
         while i < count:
@@ -195,8 +273,10 @@ class PTCommon(Token):
         Constructor.
 
         :param name: Name of the place or transition.
-        :param initial_tokens: Dictionary of initial tokens, in other words initial marking of the place.
-        :param processor: Custom token processing function that is called between processing input and output arcs.
+        :param initial_tokens: Dictionary of initial tokens, in other words initial \
+                               marking of the place.
+        :param processor: Custom token processing function that is called between \
+                          processing input and output arcs.
         """
         super().__init__(**kwargs)
         self._name: str = name
@@ -214,12 +294,171 @@ class PTCommon(Token):
         self._processor: Callable[["PTCommon"], Awaitable[bool]] | None = processor
         """Custom token processing function that is called between processing input and output arcs"""
 
+    def __rshift__(
+        self, pt_arc: Self | Arc | Set[Self], arc: Arc | None = None
+    ) -> Self | Arc:
+        """
+        Used for readable connection syntax
+
+        e.g. ``p1 >> t >> p2``
+
+        * ``pt_arc`` is a ``PTCommon`` instance:
+            ``pt1 >> pt2``, calls ``pt1.connect(pt2)`` and returns ``pt2``.
+        * ``pt_arc`` is an ``Arc`` instance:
+            ``pt >> arc``, sets ``arc.start = self`` and returns ``arc``.
+        * ``pt_arc`` is a ``set``: Runs,
+
+            .. code:: python
+
+               out = self
+               for entry in pt_arc:
+                   out = out >> entry
+               assert out == entry
+
+            and, returns ``out``.
+
+        Examples: :doc:`/connection_examples`
+
+        :param pt_arc: PTCommon instance, Arc or set of PTCommon instances
+        :param arc: Provides weight and labels of the arc when ``pt_arc`` is a ``PTCommon`` instance.
+        :return: pt_arc if pt_arc is a PTCommon or Arc instance, \
+                 last entry of the set if pt_arc is a set.
+        """
+        if isinstance(pt_arc, Arc):
+            pt_arc.start = self
+            return pt_arc
+        elif isinstance(pt_arc, set):
+            rshift = lambda value, entry: value.__rshift__(entry, arc=arc)
+            return reduce(rshift, pt_arc, self)
+        else:
+            weight: int = 1
+            labels: Sequence[label_t] = []
+            if arc is not None:
+                weight = arc.weight
+                labels = arc._labels
+            return self.connect(pt_arc, weight=weight, labels=labels)
+
+    def __gt__(
+        self, pt_arc: Self | Arc | Set[Self], arc: Arc | None = None
+    ) -> Self | Arc:
+        """
+        Used for readable connection syntax
+
+        e.g. ``p1 > t > p2``
+
+        * ``pt_arc`` is a ``PTCommon`` instance:
+            ``pt1 > pt2``, calls ``pt1.connect(pt2)`` and returns ``pt1``.
+        * ``pt_arc`` is an ``Arc`` instance:
+            ``pt > arc``, sets ``arc.start = self`` and returns ``arc``.
+        * ``pt_arc`` is a ``set``: Runs,
+
+          .. code:: python
+
+             out = self
+             for entry in pt_arc:
+                 out = out > entry
+             assert out == self
+
+          and, returns ``out``.
+
+        Examples: :doc:`/connection_examples`
+
+        :param pt_arc: PTCommon instance, Arc or set of PTCommon instances
+        :return: self if pt_arc is a PTCommon or Arc instance, \
+                 self if pt_arc is a set.
+        """
+        if isinstance(pt_arc, Arc):
+            return self.__rshift__(pt_arc, arc)
+        elif isinstance(pt_arc, set):
+            gt = lambda value, entry: value.__gt__(entry, arc=arc)
+            return reduce(gt, pt_arc, self)
+        else:
+            self.__rshift__(pt_arc, arc)
+            return self
+
+    def __lshift__(
+        self, pt_arc: Self | Arc | Set[Self], arc: Arc | None = None
+    ) -> Self | Arc:
+        """
+        Used for readable connection syntax
+
+        e.g. ``p1 << t << p2``
+
+        * ``pt_arc`` is a ``PTCommon`` instance:
+            ``pt1 << pt2``, calls ``pt2.connect(pt1)`` and returns ``pt2``.
+        * ``pt_arc`` is an ``Arc`` instance:
+            ``pt << arc``, sets ``arc.start = self`` and returns ``arc``.
+        * ``pt_arc`` is a ``set``: Runs,
+
+            .. code:: python
+
+               out = self
+               for entry in pt_arc:
+                   out = out << entry
+               assert out == entry
+
+            and, returns ``out``.
+
+        Examples: :doc:`/connection_examples`
+
+        :param pt_arc: PTCommon instance, Arc or set of PTCommon instances
+        :return: pt_arc if pt_arc is a PTCommon or Arc instance, \
+                 last entry of the set if pt_arc is a set.
+        """
+        if isinstance(pt_arc, Arc):
+            return self.__rshift__(pt_arc, arc)
+        elif isinstance(pt_arc, set):
+            lshift = lambda value, entry: value.__lshift__(entry, arc=arc)
+            return reduce(lshift, pt_arc, self)
+        else:
+            pt_arc.__rshift__(self, arc)
+            return pt_arc
+
+    def __lt__(
+        self, pt_arc: Self | Arc | Set[Self], arc: Arc | None = None
+    ) -> Self | Arc:
+        """
+        Used for readable connection syntax
+
+        e.g. ``p1 < t < p2``
+
+        * ``pt_arc`` is a ``PTCommon`` instance:
+            ``pt1 < pt2``, calls ``pt1.connect(pt2)`` and returns ``pt1``.
+        * ``pt_arc`` is an ``Arc`` instance:
+            ``pt < arc``, sets ``arc.start = self`` and returns ``arc``.
+        * ``pt_arc`` is a ``set``: Runs,
+
+            .. code:: python
+
+               out = self
+               for entry in pt_arc:
+                   out = out < entry
+               assert out == self
+
+            and, returns ``out``.
+
+        Examples: :doc:`/connection_examples`
+
+        :param pt_arc: PTCommon instance, Arc or set of PTCommon instances
+        :return: self if pt_arc is a PTCommon or Arc instance, \
+                 self if pt_arc is a set.
+        """
+        if isinstance(pt_arc, Arc):
+            return self.__rshift__(pt_arc, arc)
+        if isinstance(pt_arc, set):
+            lt = lambda value, entry: value.__lt__(entry, arc=arc)
+            return reduce(lt, pt_arc, self)
+        else:
+            self.__lshift__(pt_arc, arc)
+            return self
+
     def _put_token(self, token: TokenType, strict: bool = True) -> int:
         """
         Places tokens into a list based on its label.
 
         :param token: A label and ID pair.
-        :param strict: If set the label of token must already be in :py:attr:`soyutnet.pt_common.PTCommon._tokens` dictionary.
+        :param strict: If set the label of token must already be \
+                       in :py:attr:`soyutnet.pt_common.PTCommon._tokens` dictionary.
         :return: Number of tokens with the given label.
         """
         label: label_t = token[0]
@@ -400,7 +639,7 @@ class PTCommon(Token):
         return True
 
     def connect(
-        self, other: Self, weight: int = 1, labels: list[label_t] = [GENERIC_LABEL]
+        self, other: Self, weight: int = 1, labels: Sequence[label_t] = [GENERIC_LABEL]
     ) -> Self:
         """
         Connects the output of `self` to the input of an other PT by creating an Arc in between.
@@ -459,6 +698,17 @@ class PTCommon(Token):
         :return: Number of tokens.
         """
         return self._get_token_count(label)
+
+    def get_sorted_input_arcs(self) -> list[Arc]:
+        return sorted(self._input_arcs, key=lambda arc: arc.start._name)
+
+    def is_dangling(self) -> bool:
+        for arc in chain(self._input_arcs, self._output_arcs):
+            match arc.start, arc.end:
+                case PTCommon(), PTCommon():
+                    return False
+
+        return True
 
 
 async def _loop(pt: PTCommon) -> None:

@@ -15,9 +15,9 @@ and consumer are instances of :py:class:`soyutnet.place.SpecialPlace` class.
    Producer/consumer example
 
 It is implemented by the code below which can be found at
-`SoyutNet repo <https://github.com/dmrokan/soyutnet/blob/main/tests/simple_example.py>`__.
+`SoyutNet repo <https://github.com/dmrokan/soyutnet/blob/main/tests/behavior/simple_example.py>`__.
 
-.. literalinclude:: ../../tests/simple_example.py
+.. literalinclude:: ../../tests/behavior/simple_example.py
    :language: python
    :lines: 8-28
    :lineno-start: 8
@@ -25,7 +25,7 @@ It is implemented by the code below which can be found at
 The main function starts by defining token IDs of produced token. The producer
 function is called by :math:`p_1` and the consumer is called by :math:`p_2`.
 
-.. literalinclude:: ../../tests/simple_example.py
+.. literalinclude:: ../../tests/behavior/simple_example.py
    :language: python
    :lines: 29-52
    :lineno-start: 29
@@ -54,7 +54,7 @@ for test purposes. It accepts two additional arguments
 The token count in :math:`p_1` is observed before each firing of :math:`t_1`
 and compared to the list. If a value does not match, it raises a ``RuntimeError``.
 
-.. literalinclude:: ../../tests/simple_example.py
+.. literalinclude:: ../../tests/behavior/simple_example.py
    :language: python
    :lines: 53-63
    :lineno-start: 53
@@ -67,7 +67,7 @@ The registry keeps a list of places and transitions and it is provided to the
 
 .. code::
 
-   $ python tests/simple_example.py
+   $ python tests/behavior/simple_example.py
    Produced: (0, 1)
    No token in consumer
    Produced: (0, 2)
@@ -97,16 +97,16 @@ has :math:`n` or more tokens.
    n-tester example
 
 It is implemented by the code below which can be found at
-`SoyutNet repo <https://github.com/dmrokan/soyutnet/blob/main/tests/n_tester.py>`__.
+`SoyutNet repo <https://github.com/dmrokan/soyutnet/blob/main/tests/behavior/n_tester.py>`__.
 
-.. literalinclude:: ../../tests/n_tester.py
+.. literalinclude:: ../../tests/behavior/n_tester.py
    :language: python
 
 **Usage**
 
 .. code:: bash
 
-    $ python3 tests/n_tester.py 9
+    $ python3 tests/behavior/n_tester.py 9
     $ dot -Tpng test.gv > n_tester_example.png # Generate image from graphviz dot file
 
 
@@ -122,9 +122,9 @@ This example implements two transitions that fires at adjustable periods.
    Periodic example
 
 It is implemented by the code below which can be found at
-`SoyutNet repo <https://github.com/dmrokan/soyutnet/blob/main/tests/periodic_example.py>`__.
+`SoyutNet repo <https://github.com/dmrokan/soyutnet/blob/main/tests/behavior/periodic_example.py>`__.
 
-.. literalinclude:: ../../tests/periodic_example.py
+.. literalinclude:: ../../tests/behavior/periodic_example.py
    :language: python
 
 **Usage**
@@ -134,7 +134,7 @@ which can be adjusted by the second argument of Python script.
 
 .. code:: bash
 
-    $ python3 tests/periodic_example.py 2
+    $ python3 tests/behavior/periodic_example.py 2
     ('p1', (191030.211397, ((0, 2),), 't1'))
     ('p2', (191030.211567, ((0, 2),), 't2'))
     ('p2', (191030.211661, ((0, 1),), 't2'))
@@ -147,7 +147,7 @@ which can be adjusted by the second argument of Python script.
     ('p1', (191030.212318, ((0, 2),), 't1'))
     ('p2', (191030.212428, ((0, 2),), 't2'))
 
-    $ python3 tests/periodic_example.py 3 test.gv
+    $ python3 tests/behavior/periodic_example.py 3 test.gv
     ('p1', (190774.824447, ((0, 3),), 't1'))
     ('p2', (190774.824606, ((0, 3),), 't2'))
     ('p2', (190774.824707, ((0, 2),), 't2'))

@@ -54,59 +54,59 @@ async def test_03():
 
 
 def test_04():
-    import simple_example as e
+    import behavior.simple_example as e
 
     e.main()
 
 
 def test_05():
-    import simple_example_different_weight as e
+    import behavior.simple_example_different_weight as e
 
     e.main_01(3, 2)
 
 
 def test_06():
-    import simple_example_two_input_places as e
+    import behavior.simple_example_two_input_places as e
 
     for i in range(100, 10000, 1000):
         e.main(i)
 
 
 def test_07():
-    import simple_example_two_input_places_different_weights as e
+    import behavior.simple_example_two_input_places_different_weights as e
 
     e.main(w1=3, w2=2)
 
 
 def test_08():
-    from basic_models import co_begin
+    from behavior.basic_models import co_begin
 
     for i in range(2, 100):
         co_begin(i)
 
 
 def test_09():
-    from basic_models import co_end
+    from behavior.basic_models import co_end
 
     for i in range(2, 100):
         co_end(i)
 
 
 def test_10():
-    from basic_models import sync_by_signal
+    from behavior.basic_models import sync_by_signal
 
     sync_by_signal()
 
 
 def test_11():
-    from n_tester import n_tester
+    from behavior.n_tester import n_tester
 
     n_tester()
 
 
 def test_12():
     import hashlib
-    from readme_example import main
+    from behavior.readme_example import main
 
     records, graph = main()
     assert (
@@ -124,7 +124,7 @@ def test_12():
 
 def test_13():
     import hashlib
-    from periodic_example import main
+    from behavior.periodic_example import main
 
     for i in range(1, 100, 4):
         records = main(i)

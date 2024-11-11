@@ -1,6 +1,6 @@
 import os
 import asyncio
-from typing import (
+from typing_extensions import (
     Any,
     Dict,
     Callable,
@@ -146,7 +146,7 @@ class Registry(BaseObject):
             if label in self._directory
             else self._directory
         )
-        for label in d:
+        for label in sorted(list(d.keys())):
             for entry in d[label]:
                 yield entry
 
@@ -279,7 +279,17 @@ class PTRegistry(Registry):
         net_name: str = "Net",
         indent: str = "\t",
         label_names: Dict[label_t, str] = {},
+        ignore_dangling_pts: bool = True,
     ) -> str:
+        """
+        Generated graph definition in Graphviz dot text format.
+
+        :param net: Given name of the PT net
+        :param indent: Indentation string used in sub-blocks of dot text format
+        :param label_names: Readable version of ``label_t`` types.
+        :param ignore_dangling_pts: The PTs with no input/output connections are ignored \
+                                    when it is set.
+        """
         eol: str = os.linesep
         gv: str = f"digraph {net_name} {{" + eol
         gv_nodes: str = ""
@@ -288,9 +298,11 @@ class PTRegistry(Registry):
             obj: Any = e[1]
             if not isinstance(obj, PTCommon):
                 continue
+            elif ignore_dangling_pts and obj.is_dangling():
+                continue
             node_def: str = self._get_graphviz_node_definition(obj, 0)
             gv_nodes += 2 * indent + node_def + eol
-            for arc in obj._input_arcs:
+            for arc in obj.get_sorted_input_arcs():
                 gv_arcs += (
                     2 * indent
                     + arc.get_graphviz_definition(t=0, label_names=label_names)
